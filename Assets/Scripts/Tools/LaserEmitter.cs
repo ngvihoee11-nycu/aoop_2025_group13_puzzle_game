@@ -7,7 +7,9 @@ public class LaserEmitter : MonoBehaviour
 {
     public GameObject laserPrefab;
     private GameObject currentLaser;
-    private bool isEmitting = false;
+    public float defaultLength = 100f;
+    private int ignoreLayer = -1;
+    private Vector3 baseScale;
 
     void Start()
     {
@@ -24,51 +26,58 @@ public class LaserEmitter : MonoBehaviour
             Debug.LogError("Collider component is missing on Laser prefab or its children!");
         }
 
-        EmitLaser();
-    }
+        // Instantiate laser once and keep updating its transform/scale in Update()
+        currentLaser = Instantiate(laserPrefab, transform.position, transform.rotation, transform);
+        baseScale = currentLaser.transform.localScale;
 
-    public void EmitLaser()
-    {
-        if (isEmitting) return; // prevent re-entrant updates from triggers
-        isEmitting = true;
-
-        // Modify existing laser to keep laser collision working
-        if (currentLaser != null)
-        {
-            Destroy(currentLaser);
-        }
-
-        // Raycast to determine laser length and position
-        // we use cylinder for laser representation
-
-        RaycastHit hit;
-        float laserLength = 100f; // Default length
-        // Exclude the Laser Emitter layer and the built-in Ignore Raycast layer to avoid self-collision
-        int mask = ~LayerMask.GetMask("Laser Emitter", "Ignore Raycast");
-        if (Physics.Raycast(transform.position, transform.forward, out hit, Mathf.Infinity, mask))
-        {
-            laserLength = hit.distance;
-            Debug.Log("Laser hit: " + hit.collider.gameObject.name + " at distance: " + laserLength + " hit on" + hit.collider.gameObject.name);
-        }
-        // Instantiate laser as child of emitter
-        currentLaser = Instantiate(laserPrefab, transform.position + transform.forward * (laserLength / 2), transform.rotation, transform);
-        currentLaser.transform.localScale = new Vector3(currentLaser.transform.localScale.x, currentLaser.transform.localScale.y, laserLength);
-
-        // Put the instantiated laser (and its children) on the Ignore Raycast layer to avoid future self-hit
-        int ignoreLayer = LayerMask.NameToLayer("Ignore Raycast");
+        // Put instantiated laser on Ignore Raycast layer to avoid self-hit
+        ignoreLayer = LayerMask.NameToLayer("Ignore Raycast");
         if (ignoreLayer != -1)
         {
             SetLayerRecursively(currentLaser, ignoreLayer);
         }
 
-        // Clear emitting flag next frame to avoid trigger re-entrancy in the same frame
-        StartCoroutine(ResetEmittingFlag());
+        // Initial update
+        EmitLaser();
+    }
+
+    void Update()
+    {
+        // Continuously update laser length/position so it reflects scene changes
+        EmitLaser();
+    }
+
+    public void EmitLaser()
+    {
+        if (currentLaser == null)
+        {
+            // If laser was destroyed for some reason, recreate it
+            currentLaser = Instantiate(laserPrefab, transform.position, transform.rotation, transform);
+            baseScale = currentLaser.transform.localScale;
+            if (ignoreLayer != -1)
+                SetLayerRecursively(currentLaser, ignoreLayer);
+        }
+
+        // Raycast to determine laser length and position
+        RaycastHit hit;
+        float laserLength = defaultLength;
+        int mask = ~LayerMask.GetMask("Laser Emitter", "Ignore Raycast");
+        if (Physics.Raycast(transform.position, transform.forward, out hit, Mathf.Infinity, mask))
+        {
+            laserLength = hit.distance;
+        }
+
+        // Position the laser so its center is at half the length along forward
+        currentLaser.transform.position = transform.position + transform.forward * (laserLength / 2f);
+        currentLaser.transform.rotation = transform.rotation;
+
+        // Update scale: keep base X/Y, set Z to laserLength (matches previous behavior)
+        currentLaser.transform.localScale = new Vector3(baseScale.x, baseScale.y, laserLength);
     }
 
     private IEnumerator ResetEmittingFlag()
     {
-        yield return null; // wait one frame
-        isEmitting = false;
+        yield return null; // wait one frame (no-op if unused)
     }
 
     private void SetLayerRecursively(GameObject obj, int layer)
