@@ -4,9 +4,12 @@ public class PlayerController : Singleton<PlayerController>
 {
     public float moveSpeed = 5f;
     public Vector3 cameraOffset;
+    public Transform fppTransform;
+
     private CharacterController characterController;
 
     private Vector3 movement;
+    private bool isFPP = false;
     
     [Header("Camera")]
     public Transform cameraTransform;
@@ -15,6 +18,15 @@ public class PlayerController : Singleton<PlayerController>
     public float maxPitch = 85f;
     private float pitch = 0f;
     private float yaw = 0f;
+
+    [Header("Shooting")]
+    public GameObject leftSpawnPrefab;
+    public GameObject rightSpawnPrefab;
+    public float maxShootDistance = 100f;
+    public float spawnOffset = 0.02f; // offset from surface to avoid z-fighting
+
+    private bool isAimingLeft = false;
+    private bool isAimingRight = false;
 
     void Start()
     {
@@ -67,20 +79,120 @@ public class PlayerController : Singleton<PlayerController>
 
         if (cameraTransform != null)
         {
-            // Recompute camera position from stored offset using yaw/pitch
-            Quaternion rot = Quaternion.Euler(pitch, yaw, 0f);
-            cameraTransform.position = transform.position + rot * cameraOffset;
-            cameraTransform.LookAt(transform.position + Vector3.up);
+            // If in first-person aiming, position camera at fppTransform and use pitch/yaw for rotation
+            if (isFPP && fppTransform != null)
+            {
+                cameraTransform.position = fppTransform.position;
+                cameraTransform.rotation = Quaternion.Euler(pitch, yaw, 0f);
+            }
+            else
+            {
+                // Third-person: Recompute camera position from stored offset using yaw/pitch
+                Quaternion rot = Quaternion.Euler(pitch, yaw, 0f);
+                cameraTransform.position = transform.position + rot * cameraOffset;
+                cameraTransform.LookAt(transform.position + Vector3.up);
+            }
 
             // Rotate player horizontally to match camera yaw
             Vector3 playerEuler = transform.eulerAngles;
             playerEuler.y = yaw;
             transform.eulerAngles = playerEuler;
         }
+
+        // Input: mouse down enters aiming; mouse up performs Raycast spawn
+        // Start aiming on button down
+        if (Input.GetMouseButtonDown(0))
+        {
+            isAimingLeft = true;
+            SwitchToFPP();
+        }
+        if (Input.GetMouseButtonDown(1))
+        {
+            isAimingRight = true;
+            SwitchToFPP();
+        }
+
+        // On button release, perform Raycast and spawn corresponding prefab
+        if (Input.GetMouseButtonUp(0) && isAimingLeft)
+        {
+            PerformShoot(0);
+            isAimingLeft = false;
+            // If no longer aiming with either button, switch back to third-person
+            if (!isAimingRight)
+            {
+                SwitchToTPP();
+            }
+        }
+        if (Input.GetMouseButtonUp(1) && isAimingRight)
+        {
+            PerformShoot(1);
+            isAimingRight = false;
+            // If no longer aiming with either button, switch back to third-person
+            if (!isAimingLeft)
+            {
+                SwitchToTPP();
+            }
+        }
+    }
+
+    private void PerformShoot(int button)
+    {
+        if (cameraTransform == null) return;
+
+        Ray ray = new Ray(cameraTransform.position, cameraTransform.forward);
+        RaycastHit hit;
+        if (Physics.Raycast(ray, out hit, maxShootDistance))
+        {
+            GameObject prefabToSpawn = (button == 0) ? leftSpawnPrefab : rightSpawnPrefab;
+            if (prefabToSpawn == null)
+            {
+                Debug.LogWarning("No spawn prefab assigned for button " + button);
+                return;
+            }
+
+            // Place slightly above surface along the normal to avoid clipping
+            Vector3 spawnPos = hit.point + hit.normal * spawnOffset;
+
+            // Align object's up to the hit normal
+            Quaternion spawnRot = Quaternion.FromToRotation(Vector3.up, hit.normal);
+
+            Instantiate(prefabToSpawn, spawnPos, spawnRot);
+        }
     }
 
     void FixedUpdate()
     {
         characterController.Move(movement * moveSpeed * Time.fixedDeltaTime);
+    }
+
+    void SwitchToFPP()
+    {
+        if (!isFPP)
+        {
+            isFPP = true;
+            PlayerUIManager.instance.SetCrosshair(1);
+            if (fppTransform != null && cameraTransform != null)
+            {
+                cameraTransform.position = fppTransform.position;
+                cameraTransform.rotation = fppTransform.rotation;
+            }
+        }
+        
+    }
+
+    void SwitchToTPP()
+    {
+        if (isFPP)
+        {
+            isFPP = false;
+            PlayerUIManager.instance.SetCrosshair(0);
+            // When switching back, immediately reposition camera based on current yaw/pitch
+            if (cameraTransform != null)
+            {
+                Quaternion rot = Quaternion.Euler(pitch, yaw, 0f);
+                cameraTransform.position = transform.position + rot * cameraOffset;
+                cameraTransform.LookAt(transform.position + Vector3.up);
+            }
+        }
     }
 }
