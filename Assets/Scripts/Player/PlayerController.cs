@@ -20,13 +20,16 @@ public class PlayerController : Singleton<PlayerController>
     public float yaw = 0f;
 
     [Header("Shooting")]
-    public GameObject leftSpawnPrefab;
-    public GameObject rightSpawnPrefab;
+    public GameObject leftPortalPrefab;
+    public GameObject rightPortalPrefab;
     public float maxShootDistance = 100f;
     public float spawnOffset = 0.02f; // offset from surface to avoid z-fighting
 
     private bool isAimingLeft = false;
     private bool isAimingRight = false;
+
+    private Portal portal1;
+    private Portal portal2;
 
     void Start()
     {
@@ -145,7 +148,7 @@ public class PlayerController : Singleton<PlayerController>
         RaycastHit hit;
         if (Physics.Raycast(ray, out hit, maxShootDistance))
         {
-            GameObject prefabToSpawn = (button == 0) ? leftSpawnPrefab : rightSpawnPrefab;
+            GameObject prefabToSpawn = (button == 0) ? leftPortalPrefab : rightPortalPrefab;
             if (prefabToSpawn == null)
             {
                 Debug.LogWarning("No spawn prefab assigned for button " + button);
@@ -156,9 +159,16 @@ public class PlayerController : Singleton<PlayerController>
             Vector3 spawnPos = hit.point + hit.normal * spawnOffset;
 
             // Align object's up to the hit normal
-            Quaternion spawnRot = Quaternion.FromToRotation(Vector3.up, hit.normal);
+            Quaternion spawnRot = Quaternion.FromToRotation(Vector3.forward, hit.normal);
 
-            Instantiate(prefabToSpawn, spawnPos, spawnRot);
+            if (button == 0) portal1 = Instantiate(prefabToSpawn, spawnPos, spawnRot).GetComponent<Portal>();
+            else if (button == 1) portal2 = Instantiate(prefabToSpawn, spawnPos, spawnRot).GetComponent<Portal>();
+            // Link portals if both exist
+            if (portal1 != null && portal2 != null)
+            {
+                portal1.linkedPortal = portal2.transform;
+                portal2.linkedPortal = portal1.transform;
+            }
         }
     }
 
