@@ -11,6 +11,11 @@ public class PlayerController : Singleton<PlayerController>
     private Vector3 movement;
     private bool isFPP = false;
     
+    [Header("Physics")]
+    public float gravity = -9.81f;
+    public float jumpHeight = 1.5f;
+    private float verticalVelocity = 0f;
+    
     [Header("Camera")]
     public Transform cameraTransform;
     public float mouseSensitivity = 100f;
@@ -72,7 +77,25 @@ public class PlayerController : Singleton<PlayerController>
             movement = new Vector3(moveX, 0, moveZ).normalized;
         }
 
-        characterController.Move(movement * moveSpeed * Time.deltaTime);
+        // Apply gravity and jumping
+        bool grounded = characterController.isGrounded;
+        if (grounded && verticalVelocity < 0f)
+        {
+            // Small negative value to keep the controller grounded
+            verticalVelocity = -2f;
+        }
+
+        if (grounded && Input.GetButtonDown("Jump"))
+        {
+            // v = sqrt(2 * g * h) but gravity is negative so use -2 * gravity
+            verticalVelocity = Mathf.Sqrt(jumpHeight * -2f * gravity);
+        }
+
+        // Integrate gravity
+        verticalVelocity += gravity * Time.deltaTime;
+
+        Vector3 fullVelocity = movement * moveSpeed + Vector3.up * verticalVelocity;
+        characterController.Move(fullVelocity * Time.deltaTime);
 
         // Handle Camera Rotation (mouse look)
         float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity * Time.deltaTime;
