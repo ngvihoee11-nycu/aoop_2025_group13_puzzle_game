@@ -917,7 +917,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   moveSpeed: 5
   cameraOffset: {x: 0, y: 0, z: -3}
-  fppTransform: {fileID: 0}
+  fppTransform: {fileID: 859985927}
   cameraTransform: {fileID: 330585546}
   mouseSensitivity: 1000
   minPitch: -40
@@ -1188,6 +1188,7 @@ GameObject:
   - component: {fileID: 1719307887}
   - component: {fileID: 1719307886}
   - component: {fileID: 1719307885}
+  - component: {fileID: 1719307889}
   m_Layer: 5
   m_Name: PlayerUI
   m_TagString: Untagged
@@ -1279,6 +1280,19 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 0}
+--- !u!114 &1719307889
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1719307884}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b4b0fb1d96ff3d44aa3df61acaac9f9b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  crosshair: {fileID: 817077108}
 --- !u!1 &1762280581
 GameObject:
   m_ObjectHideFlags: 0
