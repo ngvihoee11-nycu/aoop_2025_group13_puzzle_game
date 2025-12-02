@@ -16,8 +16,8 @@ public class PlayerController : Singleton<PlayerController>
     public float mouseSensitivity = 100f;
     public float minPitch = -40f;
     public float maxPitch = 85f;
-    private float pitch = 0f;
-    private float yaw = 0f;
+    public float pitch = 0f;
+    public float yaw = 0f;
 
     [Header("Shooting")]
     public GameObject leftSpawnPrefab;
@@ -68,6 +68,8 @@ public class PlayerController : Singleton<PlayerController>
         {
             movement = new Vector3(moveX, 0, moveZ).normalized;
         }
+
+        characterController.Move(movement * moveSpeed * Time.deltaTime);
 
         // Handle Camera Rotation (mouse look)
         float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity * Time.deltaTime;
@@ -158,11 +160,6 @@ public class PlayerController : Singleton<PlayerController>
 
             Instantiate(prefabToSpawn, spawnPos, spawnRot);
         }
-    }
-
-    void FixedUpdate()
-    {
-        characterController.Move(movement * moveSpeed * Time.fixedDeltaTime);
     }
 
     void SwitchToFPP()
