@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class PlayerController : Singleton<PlayerController>
+public class PlayerController : PortalTravellerSingleton<PlayerController>
 {
     public float moveSpeed = 5f;
     public Vector3 cameraOffset;
@@ -189,8 +189,8 @@ public class PlayerController : Singleton<PlayerController>
             // Link portals if both exist
             if (portal1 != null && portal2 != null)
             {
-                portal1.linkedPortal = portal2.transform;
-                portal2.linkedPortal = portal1.transform;
+                portal1.linkedPortal = portal2;
+                portal2.linkedPortal = portal1;
             }
         }
     }
@@ -224,5 +224,15 @@ public class PlayerController : Singleton<PlayerController>
                 cameraTransform.LookAt(transform.position + Vector3.up);
             }
         }
+    }
+
+    public override void Teleport(Transform fromPortal, Transform toPortal, Vector3 pos, Quaternion rot)
+    {
+        // Directly set position and rotation
+        transform.position = pos;
+        Vector3 eular = rot.eulerAngles;
+        //pitch = eular.x;
+        yaw = eular.y;
+        Physics.SyncTransforms(); // Ensure physics is updated after teleportation
     }
 }

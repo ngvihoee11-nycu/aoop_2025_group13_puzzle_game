@@ -918,6 +918,8 @@ MonoBehaviour:
   moveSpeed: 5
   cameraOffset: {x: 0, y: 0, z: -3}
   fppTransform: {fileID: 859985927}
+  gravity: -9.81
+  jumpHeight: 1.5
   cameraTransform: {fileID: 330585546}
   mouseSensitivity: 1000
   minPitch: -40
@@ -1045,18 +1047,18 @@ Transform:
   - {fileID: 859985927}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!4 &1077379080 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 2912585911831322444, guid: d0799209de2c12e4e8421958aa7229ae,
+--- !u!114 &1099353665 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 5768748456087358483, guid: d0799209de2c12e4e8421958aa7229ae,
     type: 3}
   m_PrefabInstance: {fileID: 6109764239920276262}
   m_PrefabAsset: {fileID: 0}
---- !u!4 &1239717241 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 2361323298250029245, guid: d13d54a158f6daf4a993941ad5535966,
-    type: 3}
-  m_PrefabInstance: {fileID: 3616249394112264643}
-  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3e929ee05f96f9dcda9620686f3d2e87, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1001 &1560815953
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1130,6 +1132,18 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: b4dccc92ca243524cb8e9490b3ec5960, type: 3}
+--- !u!114 &1634907780 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 7867024489241981785, guid: d13d54a158f6daf4a993941ad5535966,
+    type: 3}
+  m_PrefabInstance: {fileID: 3616249394112264643}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3e929ee05f96f9dcda9620686f3d2e87, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1706251941
 GameObject:
   m_ObjectHideFlags: 0
@@ -6493,7 +6507,7 @@ PrefabInstance:
         type: 3}
       propertyPath: linkedPortal
       value: 
-      objectReference: {fileID: 1077379080}
+      objectReference: {fileID: 1099353665}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -6566,7 +6580,7 @@ PrefabInstance:
         type: 3}
       propertyPath: linkedPortal
       value: 
-      objectReference: {fileID: 1239717241}
+      objectReference: {fileID: 1634907780}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
