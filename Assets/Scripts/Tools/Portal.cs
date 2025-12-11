@@ -1,5 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 using UnityEngine;
 
 public class Portal : MonoBehaviour
@@ -12,16 +14,17 @@ public class Portal : MonoBehaviour
     RenderTexture viewTexture;
     Camera portalCamera;
     Camera playerCamera;
-    List<PortalTraveller> trackedTravellers = new List<PortalTraveller>();
+    List<PortalTraveller> trackedTravellers;
     MeshFilter screenMeshFilter;
     
     void Awake()
     {
-        //playerCamera = Camera.main;
-        //portalCamera = GetComponentInChildren<Camera>();
-        //portalCamera.enabled = false;
-        //screenMeshFilter = screen.GetComponent<MeshFilter>();
-        //screen.material.SetInt("displayMask", 1);
+        playerCamera = Camera.main;
+        portalCamera = GetComponentInChildren<Camera>();
+        portalCamera.enabled = false;
+        trackedTravellers = new List<PortalTraveller>();
+        screenMeshFilter = screen.GetComponent<MeshFilter>();
+        screen.material.SetInt("displayMask", 1);
     }
 
     void LateUpdate()
@@ -44,7 +47,7 @@ public class Portal : MonoBehaviour
             if (portalSide == -1 && prevPortalSide == 1)
             {
                 // Teleport the traveller to the linked portal
-                traveller.Teleport(transform, linkedPortal.transform, m.GetPosition() /*remove this after implementing velocity*/ + linkedPortal.transform.forward * 0.1f, m.rotation);
+                traveller.Teleport(transform, linkedPortal.transform, m.GetPosition(), m.rotation);
                 linkedPortal.OnTravellerEnter(traveller); // Notify the linked portal of the traveller's entry
                 trackedTravellers.RemoveAt(i);
             }
@@ -81,6 +84,75 @@ public class Portal : MonoBehaviour
         {
             trackedTravellers.Remove(traveller);
         }
+    }
+
+    public void PrePortalRender()
+    {
+    }
+
+    public void Render(ScriptableRenderContext SRC)
+    {
+
+        // Skip rendering if linked portal is not set
+        if (linkedPortal == null) return;
+        // Skip rendering if not visible to player camera
+        if (!CameraUtility.VisibleFromCamera(linkedPortal.screen, playerCamera)) return;
+
+
+        CreateViewTexture();
+
+        portalCamera.projectionMatrix = playerCamera.projectionMatrix;
+
+        screen.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly;
+        linkedPortal.screen.material.SetInt("displayMask", 0);
+
+        Matrix4x4 m = transform.localToWorldMatrix * Matrix4x4.Rotate(Quaternion.Euler(0f, 180f, 0f)) * linkedPortal.transform.worldToLocalMatrix * playerCamera.transform.localToWorldMatrix;
+        portalCamera.transform.SetPositionAndRotation(m.GetPosition(), m.rotation);
+        UniversalRenderPipeline.RenderSingleCamera(SRC, portalCamera);
+
+        linkedPortal.screen.material.SetInt("displayMask", 1);
+        screen.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
+    }
+
+    public void PostPortalRender () {
+        //foreach (PortalTraveller traveller in trackedTravellers) {
+        //    UpdateSliceParams (traveller);
+        //}
+        ProtectScreenFromClipping (playerCamera.transform.position);
+    }
+
+    void CreateViewTexture()
+    {
+        // This method can be used to create the render texture for the portal view
+        if (viewTexture == null || viewTexture.width != Screen.width || viewTexture.height != Screen.height)
+        {
+            if (viewTexture)
+            {
+                viewTexture.Release();
+            }
+            viewTexture = new RenderTexture(Screen.width, Screen.height, 0);
+            portalCamera.targetTexture = viewTexture;
+            linkedPortal.screen.material.SetTexture("_MainTex", viewTexture);
+        }
+    }
+
+    // Sets the thickness of the portal screen so as not to clip with camera near plane when player goes through
+    float ProtectScreenFromClipping (Vector3 viewPoint)
+    {
+        Vector3 playerPosition = PortalTravellerSingleton<PlayerController>.instance.transform.position;
+        Vector3 playerPositionAtViewPointHeight = new Vector3 (playerPosition.x, viewPoint.y, playerPosition.z);
+        float nearClipPlaneDist = Vector3.Dot (transform.forward, viewPoint - playerPositionAtViewPointHeight);
+
+        float halfHeight = playerCamera.nearClipPlane * Mathf.Tan(playerCamera.fieldOfView * 0.5f * Mathf.Deg2Rad);
+        float halfWidth = halfHeight * playerCamera.aspect;
+        float dstToNearClipPlaneCorner = new Vector3(halfWidth, halfHeight, nearClipPlaneDist).magnitude;
+        float screenThickness = dstToNearClipPlaneCorner * 0.5f; // Cylinder height is 0.5 times this distance
+
+        Transform screenT = screen.transform;
+        bool camFacingSameDirAsPortal = Vector3.Dot (transform.forward, transform.position - playerPosition) > 0;
+        screenT.localScale = new Vector3 (screenT.localScale.x, screenThickness, screenT.localScale.z);
+        screenT.localPosition = Vector3.forward * screenThickness *(camFacingSameDirAsPortal ? 1f : -1f);
+        return screenThickness;
     }
 
 }

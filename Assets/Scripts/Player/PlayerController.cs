@@ -9,7 +9,7 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
     private CharacterController characterController;
 
     private Vector3 movement;
-    private bool isFPP = false;
+    private bool isFPP = true;
     
     [Header("Physics")]
     public float gravity = -9.81f;
@@ -148,7 +148,7 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
             // If no longer aiming with either button, switch back to third-person
             if (!isAimingRight)
             {
-                SwitchToTPP();
+                //SwitchToTPP();
             }
         }
         if (Input.GetMouseButtonUp(1) && isAimingRight)
@@ -158,7 +158,7 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
             // If no longer aiming with either button, switch back to third-person
             if (!isAimingLeft)
             {
-                SwitchToTPP();
+                //SwitchToTPP();
             }
         }
     }
