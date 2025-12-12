@@ -22,9 +22,10 @@ public class MainCamera : MonoBehaviour {
 
     private void CustomOnBeginCameraRendering(ScriptableRenderContext SRC, Camera camera)
     {
-        //for (int i = 0; i < portals.Length; i++) {
-        //    portals[i].PrePortalRender ();
-        //}
+        for (int i = 0; i < portals.Length; i++) {
+            portals[i].PrePortalRender();
+        }
+
         for (int i = 0; i < portals.Length; i++)
         {
             if (portals[i].linkedPortal) portals[i].Render(SRC);

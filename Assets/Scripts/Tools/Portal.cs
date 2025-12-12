@@ -10,6 +10,7 @@ public class Portal : MonoBehaviour
     public GameObject attachedSurface;
     public Portal linkedPortal;
     public MeshRenderer screen;
+    public int recursionLimit = 3;
 
     RenderTexture viewTexture;
     Camera portalCamera;
@@ -101,16 +102,45 @@ public class Portal : MonoBehaviour
 
         CreateViewTexture();
 
-        portalCamera.projectionMatrix = playerCamera.projectionMatrix;
+        Matrix4x4 localToWorldMatrix = playerCamera.transform.localToWorldMatrix;
+        Vector3[] renderPositions = new Vector3[recursionLimit];
+        Quaternion[] renderRotations = new Quaternion[recursionLimit];
+
+        int startIndex = 0;
+        for (int i = 0; i < recursionLimit; i++)
+        {
+            if (i > 0)
+            {
+                // Check if the portal is visible from the portal camera
+                if (!CameraUtility.BoundsOverlap(screenMeshFilter, linkedPortal.screenMeshFilter, portalCamera)) break; 
+            }
+
+            localToWorldMatrix = transform.localToWorldMatrix * Matrix4x4.Rotate(Quaternion.Euler(0f, 180f, 0f)) * linkedPortal.transform.worldToLocalMatrix * localToWorldMatrix;
+            int renderOrder = recursionLimit - 1 - i;
+            renderPositions[renderOrder] = localToWorldMatrix.GetPosition();
+            renderRotations[renderOrder] = localToWorldMatrix.rotation;
+            startIndex = renderOrder;
+        }
 
         screen.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly;
+
         linkedPortal.screen.material.SetInt("displayMask", 0);
 
-        Matrix4x4 m = transform.localToWorldMatrix * Matrix4x4.Rotate(Quaternion.Euler(0f, 180f, 0f)) * linkedPortal.transform.worldToLocalMatrix * playerCamera.transform.localToWorldMatrix;
-        portalCamera.transform.SetPositionAndRotation(m.GetPosition(), m.rotation);
-        UniversalRenderPipeline.RenderSingleCamera(SRC, portalCamera);
+        for (int i = startIndex; i < recursionLimit; i++)
+        {
+            portalCamera.transform.SetPositionAndRotation(renderPositions[i], renderRotations[i]);
 
-        linkedPortal.screen.material.SetInt("displayMask", 1);
+            // Warning says RenderSingleCamera is obsolete, but the alternative is broken in current version
+            #pragma warning disable CS0618
+            UniversalRenderPipeline.RenderSingleCamera(SRC, portalCamera);
+            #pragma warning restore CS0618
+
+            if (i == startIndex)
+            {
+                linkedPortal.screen.material.SetInt("displayMask", 1);
+            }
+        }
+        
         screen.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
     }
 
