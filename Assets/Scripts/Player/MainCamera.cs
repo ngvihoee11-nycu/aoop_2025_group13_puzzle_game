@@ -3,11 +3,21 @@ using UnityEngine.Rendering;
 
 public class MainCamera : MonoBehaviour {
 
+    Camera mainCamera;
     Portal[] portals;
 
     void Awake()
     {
+
+        mainCamera = GetComponent<Camera> ();
+        mainCamera.cullingMask = -1;
+        if (PlayerController.instance.isFPP)
+        {
+            mainCamera.cullingMask &= ~(1 << LayerMask.NameToLayer("FPPHide"));
+        }
+
         portals = FindObjectsOfType<Portal> ();
+
     }
 
     protected void OnEnable()

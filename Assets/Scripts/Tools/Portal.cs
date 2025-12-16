@@ -12,7 +12,7 @@ public class Portal : MonoBehaviour
     public MeshRenderer screen;
     public int recursionLimit = 3;
 
-    [Header ("Advanced Settings")]
+    [Header("Advanced Settings")]
     public float nearClipOffset = 0.05f;
     public float nearClipLimit = 0.2f;
 
@@ -109,8 +109,7 @@ public class Portal : MonoBehaviour
         // Skip rendering if not visible to player camera
         if (!CameraUtility.VisibleFromCamera(linkedPortal.screen, playerCamera)) return;
         // Display Inactive color if viewing back of the portal
-        if (!trackedTravellers.Contains(PlayerController.instance) && !linkedPortal.trackedTravellers.Contains(PlayerController.instance) 
-        && linkedPortal.SideOfPortal(PlayerController.instance.transform.position) == -1)
+        if (linkedPortal.SideOfPortal(playerCamera.transform.position) == -1)
         {
             linkedPortal.screen.material.SetInt("displayMask", 0);
             return;
@@ -127,8 +126,10 @@ public class Portal : MonoBehaviour
         {
             if (i > 0)
             {
-                // Check if the portal is visible from the portal camera
-                if (!CameraUtility.BoundsOverlap(screenMeshFilter, linkedPortal.screenMeshFilter, portalCamera)) break; 
+                // Stop recursion if the linked portal is not visible from the portal camera
+                if (!CameraUtility.BoundsOverlap(screenMeshFilter, linkedPortal.screenMeshFilter, portalCamera)) break;
+                // Stop recursion if viewing back of the portal
+                if (SideOfPortal(portalCamera.transform.position) == -1) break;
             }
 
             localToWorldMatrix = transform.localToWorldMatrix * Matrix4x4.Rotate(Quaternion.Euler(0f, 180f, 0f)) * linkedPortal.transform.worldToLocalMatrix * localToWorldMatrix;
@@ -143,11 +144,17 @@ public class Portal : MonoBehaviour
         screen.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly;
 
         linkedPortal.screen.material.SetInt("displayMask", 0);
+        portalCamera.cullingMask = -1;
 
         for (int i = startIndex; i < recursionLimit; i++)
         {
             portalCamera.transform.SetPositionAndRotation(renderPositions[i], renderRotations[i]);
             SetNearClipPlane();
+
+            if (PlayerController.instance.isFPP && i == recursionLimit - 1)
+            {
+                portalCamera.cullingMask &= ~(1 << LayerMask.NameToLayer("FPPHidePortal"));
+            }
 
             // Warning says RenderSingleCamera is obsolete, but the alternative is broken in current version
             #pragma warning disable CS0618
@@ -163,8 +170,9 @@ public class Portal : MonoBehaviour
         screen.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
     }
 
-    public void PostPortalRender () {
-        ProtectScreenFromClipping (playerCamera.transform.position);
+    public void PostPortalRender()
+    {
+        ProtectScreenFromClipping(playerCamera.transform.position);
     }
 
     void CreateViewTexture()
@@ -183,10 +191,10 @@ public class Portal : MonoBehaviour
     }
 
     // Sets the thickness of the portal screen so as not to clip with camera near plane when player goes through
-    float ProtectScreenFromClipping (Vector3 viewPoint)
+    float ProtectScreenFromClipping(Vector3 viewPoint)
     {
         Vector3 playerPosition = PlayerController.instance.transform.position;
-        Vector3 playerPositionAtViewPointHeight = new Vector3 (playerPosition.x, viewPoint.y, playerPosition.z);
+        Vector3 playerPositionAtViewPointHeight = new Vector3(playerPosition.x, viewPoint.y, playerPosition.z);
         float nearClipPlaneDist = Vector3.Dot (transform.forward, viewPoint - playerPositionAtViewPointHeight);
 
         float halfHeight = playerCamera.nearClipPlane * Mathf.Tan(playerCamera.fieldOfView * 0.5f * Mathf.Deg2Rad);
@@ -195,38 +203,43 @@ public class Portal : MonoBehaviour
         float screenThickness = dstToNearClipPlaneCorner * 0.5f; // Cylinder height is 0.5 times this distance
 
         Transform screenT = screen.transform;
-        bool camFacingSameDirAsPortal = Vector3.Dot (transform.forward, transform.position - playerPosition) > 0;
-        screenT.localScale = new Vector3 (screenT.localScale.x, screenThickness, screenT.localScale.z);
+        bool camFacingSameDirAsPortal = Vector3.Dot(transform.forward, transform.position - playerPosition) > 0;
+        screenT.localScale = new Vector3(screenT.localScale.x, screenThickness, screenT.localScale.z);
         screenT.localPosition = Vector3.forward * screenThickness *(camFacingSameDirAsPortal ? 1f : -1f);
         return screenThickness;
     }
 
     // Use custom projection matrix to align portal camera's near clip plane with the surface of the portal
     // Note that this affects precision of the depth buffer, which can cause issues with effects like screenspace AO
-    void SetNearClipPlane () {
+    void SetNearClipPlane()
+    {
         // Learning resource:
         // http://www.terathon.com/lengyel/Lengyel-Oblique.pdf
         Transform clipPlane = transform;
-        int dot = System.Math.Sign (Vector3.Dot (clipPlane.forward, transform.position - portalCamera.transform.position));
+        int dot = System.Math.Sign(Vector3.Dot(clipPlane.forward, transform.position - portalCamera.transform.position));
 
         Vector3 camSpacePos = portalCamera.worldToCameraMatrix.MultiplyPoint (clipPlane.position);
         Vector3 camSpaceNormal = portalCamera.worldToCameraMatrix.MultiplyVector (clipPlane.forward) * dot;
         float camSpaceDst = -Vector3.Dot (camSpacePos, camSpaceNormal) + nearClipOffset;
 
         // Don't use oblique clip plane if very close to portal as it seems this can cause some visual artifacts
-        if (Mathf.Abs (camSpaceDst) > nearClipLimit) {
-            Vector4 clipPlaneCameraSpace = new Vector4 (camSpaceNormal.x, camSpaceNormal.y, camSpaceNormal.z, camSpaceDst);
+        if (Mathf.Abs(camSpaceDst) > nearClipLimit)
+        {
+            Vector4 clipPlaneCameraSpace = new Vector4(camSpaceNormal.x, camSpaceNormal.y, camSpaceNormal.z, camSpaceDst);
 
             // Update projection based on new clip plane
             // Calculate matrix with player cam so that player camera settings (fov, etc) are used
-            portalCamera.projectionMatrix = playerCamera.CalculateObliqueMatrix (clipPlaneCameraSpace);
-        } else {
+            portalCamera.projectionMatrix = playerCamera.CalculateObliqueMatrix(clipPlaneCameraSpace);
+        }
+        else
+        {
             portalCamera.projectionMatrix = playerCamera.projectionMatrix;
         }
     }
 
-    int SideOfPortal (Vector3 pos) {
-        return System.Math.Sign (Vector3.Dot (pos - transform.position, transform.forward));
+    int SideOfPortal(Vector3 pos)
+    {
+        return System.Math.Sign(Vector3.Dot(pos - transform.position, transform.forward));
     }
 
 }

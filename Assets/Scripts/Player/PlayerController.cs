@@ -4,12 +4,12 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
 {
     public float moveSpeed = 5f;
     public Vector3 cameraOffset;
-    public Transform fppTransform;
+    public float eyeHeight = 0.375f;
 
     private CharacterController characterController;
 
     private Vector3 movement;
-    private bool isFPP = true;
+    public bool isFPP = true;
     
     [Header("Physics")]
     public float gravity = -9.81f;
@@ -107,10 +107,10 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
 
         if (cameraTransform != null)
         {
-            // If in first-person aiming, position camera at fppTransform and use pitch/yaw for rotation
-            if (isFPP && fppTransform != null)
+            // If in first-person aiming, position camera at eye height
+            if (isFPP)
             {
-                cameraTransform.position = fppTransform.position;
+                cameraTransform.position = transform.position + Vector3.up * eyeHeight;
                 cameraTransform.rotation = Quaternion.Euler(pitch, yaw, 0f);
             }
             else
@@ -201,10 +201,11 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
         {
             isFPP = true;
             PlayerUIManager.instance.SetCrosshair(1);
-            if (fppTransform != null && cameraTransform != null)
+            if (cameraTransform != null)
             {
-                cameraTransform.position = fppTransform.position;
-                cameraTransform.rotation = fppTransform.rotation;
+                cameraTransform.position = transform.position + Vector3.up * eyeHeight;
+                cameraTransform.rotation = Quaternion.Euler(pitch, yaw, 0f);
+                Camera.main.cullingMask &= ~(1 << LayerMask.NameToLayer("FPPHide"));
             }
         }
         
@@ -222,7 +223,18 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
                 Quaternion rot = Quaternion.Euler(pitch, yaw, 0f);
                 cameraTransform.position = transform.position + rot * cameraOffset;
                 cameraTransform.LookAt(transform.position + Vector3.up);
+                Camera.main.cullingMask |= 1 << LayerMask.NameToLayer("FPPHide");
             }
+        }
+    }
+
+    public override void EnterPortalTrigger()
+    {
+        base.EnterPortalTrigger();
+        graphicsClone.layer = LayerMask.NameToLayer("FPPHidePortal");
+        foreach (Transform child in graphicsClone.transform)
+        {
+            child.gameObject.layer = LayerMask.NameToLayer("FPPHidePortal");
         }
     }
 
