@@ -99,6 +99,9 @@ public class Portal : MonoBehaviour
 
     public void PrePortalRender()
     {
+        foreach (var traveller in trackedTravellers) {
+            UpdateSliceParams (traveller);
+        }
     }
 
     public void Render(ScriptableRenderContext SRC)
@@ -172,7 +175,10 @@ public class Portal : MonoBehaviour
 
     public void PostPortalRender()
     {
-        ProtectScreenFromClipping(playerCamera.transform.position);
+        foreach (var traveller in trackedTravellers) {
+            UpdateSliceParams (traveller);
+        }
+        ProtectScreenFromClipping (playerCamera.transform.position);
     }
 
     void CreateViewTexture()
@@ -236,6 +242,34 @@ public class Portal : MonoBehaviour
             portalCamera.projectionMatrix = playerCamera.projectionMatrix;
         }
     }
+
+    void UpdateSliceParams(PortalTraveller traveller)
+    {
+        // Calculate slice normal
+        Vector3 sliceNormal = -transform.forward;
+        Vector3 cloneSliceNormal = -linkedPortal.transform.forward;
+
+        // Calculate slice center
+        Vector3 sliceCenter = transform.position;
+        Vector3 cloneSliceCenter = linkedPortal.transform.position;
+
+        // Calculate offset distance
+        float sliceOffsetDst = 0;
+        float cloneSliceOffsetDst = 0;
+
+        // Apply parameters to traveller materials
+        for (int i = 0; i < traveller.originalMaterials.Length; i++)
+        {
+            traveller.originalMaterials[i].SetVector("_sliceNormal", sliceNormal);
+            traveller.originalMaterials[i].SetVector("_sliceCenter", sliceCenter);
+            traveller.originalMaterials[i].SetFloat("_sliceOffsetDst", sliceOffsetDst);
+
+            traveller.cloneMaterials[i].SetVector("_sliceNormal", cloneSliceNormal);
+            traveller.cloneMaterials[i].SetVector("_sliceCenter", cloneSliceCenter);
+            traveller.cloneMaterials[i].SetFloat("_sliceOffsetDst", cloneSliceOffsetDst);
+        }
+    }
+
 
     int SideOfPortal(Vector3 pos)
     {

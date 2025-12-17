@@ -6,48 +6,50 @@ Shader "Custom/Portal"
     }
     SubShader
     {
-        Tags { "RenderType"="Opaque" }
+        Tags { "RenderType"="Opaque" "RenderPipeline"="UniversalPipeline" }
         LOD 100
         Cull Off
 
         Pass
         {
-            CGPROGRAM
+            HLSLPROGRAM
             #pragma vertex vert
             #pragma fragment frag
-            #include "UnityCG.cginc"
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 
-            struct appdata
+            struct Attributes
             {
-                float4 vertex : POSITION;
+                float4 positionOS : POSITION;
             };
 
-            struct v2f
+            struct Varyings
             {
-                float4 vertex : SV_POSITION;
+                float4 positionHCS : SV_POSITION;
                 float4 screenPos : TEXCOORD0;
             };
 
-            sampler2D _MainTex;
-            float4 _InactiveColour;
-            int displayMask; // set to 1 to display texture, otherwise will draw inactive colour
+            CBUFFER_START(UnityPerMaterial)
+                sampler2D _MainTex;
+                float4 _InactiveColour;
+                int displayMask; // set to 1 to display texture, otherwise will draw inactive color
+            CBUFFER_END
             
 
-            v2f vert (appdata v)
+            Varyings vert (Attributes IN)
             {
-                v2f o;
-                o.vertex = UnityObjectToClipPos(v.vertex);
-                o.screenPos = ComputeScreenPos(o.vertex);
-                return o;
+                Varyings OUT;
+                OUT.positionHCS = TransformObjectToHClip(IN.positionOS.xyz);
+                OUT.screenPos = ComputeScreenPos(OUT.positionHCS);
+                return OUT;
             }
 
-            fixed4 frag (v2f i) : SV_Target
+            half4 frag (Varyings IN) : SV_Target
             {
-                float2 uv = i.screenPos.xy / i.screenPos.w;
-                fixed4 portalCol = tex2D(_MainTex, uv);
+                float2 uv = IN.screenPos.xy / IN.screenPos.w;
+                half4 portalCol = tex2D(_MainTex, uv);
                 return portalCol * displayMask + _InactiveColour * (1-displayMask);
             }
-            ENDCG
+            ENDHLSL
         }
     }
     Fallback "Standard" // for shadows

@@ -21,7 +21,9 @@ public class PortalTraveller : MonoBehaviour
     {
         if (graphicsClone == null)
         {
-            graphicsClone = Instantiate(graphicsObject, graphicsObject.transform.position, graphicsObject.transform.rotation, graphicsObject.transform.parent);
+            graphicsClone = Instantiate(graphicsObject);
+            graphicsClone.transform.parent = graphicsObject.transform.parent;
+            graphicsClone.transform.localScale = graphicsObject.transform.localScale;
             originalMaterials = GetMaterials(graphicsObject);
             cloneMaterials = GetMaterials(graphicsClone);
         }
@@ -36,6 +38,26 @@ public class PortalTraveller : MonoBehaviour
         if (graphicsClone != null)
         {
             graphicsClone.SetActive(false);
+            // Disable slicing
+            for (int i = 0; i < cloneMaterials.Length; i++)
+            {
+                cloneMaterials[i].SetVector("_sliceNormal", Vector3.zero);
+            }
+        }
+    }
+
+    public void SetOffsetDst(float dst, bool isClone)
+    {
+        for (int i = 0; i < originalMaterials.Length; i++)
+        {
+            if (isClone)
+            {
+                cloneMaterials[i].SetFloat("_sliceOffsetDst", dst);
+            }
+            else
+            {
+                originalMaterials[i].SetFloat("_sliceOffsetDst", dst);
+            }
         }
     }
 
