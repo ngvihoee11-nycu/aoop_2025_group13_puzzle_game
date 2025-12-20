@@ -38,11 +38,11 @@ public class PortalTraveller : MonoBehaviour
         if (graphicsClone != null)
         {
             graphicsClone.SetActive(false);
-            // Disable slicing
-            for (int i = 0; i < cloneMaterials.Length; i++)
-            {
-                cloneMaterials[i].SetVector("_sliceNormal", Vector3.zero);
-            }
+        }
+        // Disable slicing
+        for (int i = 0; i < originalMaterials.Length; i++)
+        {
+            originalMaterials[i].SetVector("_sliceNormal", Vector3.zero);
         }
     }
 

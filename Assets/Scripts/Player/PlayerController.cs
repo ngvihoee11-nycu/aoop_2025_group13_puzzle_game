@@ -2,27 +2,34 @@ using UnityEngine;
 
 public class PlayerController : PortalTravellerSingleton<PlayerController>
 {
-    public float moveSpeed = 5f;
-    public Vector3 cameraOffset;
-    public float eyeHeight = 0.375f;
+    [Header("Movement")]
+    public float walkSpeed = 5f;
+    public float runSpeed = 10f;
+    public float smoothMoveTime = 0.1f;
 
-    private CharacterController characterController;
-
-    private Vector3 movement;
-    public bool isFPP = true;
-    
     [Header("Physics")]
     public float gravity = -9.81f;
     public float jumpHeight = 1.5f;
-    private float verticalVelocity = 0f;
+    private Vector3 velocity;
+    private float verticalVelocity;
+    private Vector3 smoothV;
+    private CharacterController characterController;
     
     [Header("Camera")]
+    public bool isFPP = true;
+    public float eyeHeight = 0.375f;
+    public Vector3 cameraOffset;
     public Transform cameraTransform;
     public float mouseSensitivity = 100f;
     public float minPitch = -40f;
     public float maxPitch = 85f;
+    public float smoothRotationTime = 0.1f;
     public float pitch = 0f;
     public float yaw = 0f;
+    private float smoothPitch;
+    private float smoothYaw;
+    private float pitchSmoothV;
+    private float yawSmoothV;
 
     [Header("Shooting")]
     public GameObject leftPortalPrefab;
@@ -59,23 +66,14 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
 
     void Update()
     {
-        float moveX = Input.GetAxis("Horizontal");
-        float moveZ = Input.GetAxis("Vertical");
-        // Camera-relative movement: use camera forward/right when available
-        if (cameraTransform != null)
-        {
-            Vector3 forward = cameraTransform.forward;
-            forward.y = 0f;
-            forward.Normalize();
-            Vector3 right = cameraTransform.right;
-            right.y = 0f;
-            right.Normalize();
-            movement = (right * moveX + forward * moveZ).normalized;
-        }
-        else
-        {
-            movement = new Vector3(moveX, 0, moveZ).normalized;
-        }
+        Vector2 input = new Vector2(Input.GetAxis("Horizontal"), Input.GetAxis("Vertical"));
+        Vector3 inputDir = new Vector3(input.x, 0, input.y).normalized;
+        Vector3 worldInputDir = transform.TransformDirection(inputDir);
+        
+        float targetSpeed = Input.GetKey(KeyCode.LeftShift) ? runSpeed : walkSpeed;
+        Vector3 targetVelocity = worldInputDir * targetSpeed;
+        velocity = Vector3.SmoothDamp(velocity, targetVelocity, ref smoothV, smoothMoveTime);
+        
 
         // Apply gravity and jumping
         bool grounded = characterController.isGrounded;
@@ -94,8 +92,8 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
         // Integrate gravity
         verticalVelocity += gravity * Time.deltaTime;
 
-        Vector3 fullVelocity = movement * moveSpeed + Vector3.up * verticalVelocity;
-        characterController.Move(fullVelocity * Time.deltaTime);
+        velocity.y = verticalVelocity;
+        characterController.Move(velocity * Time.deltaTime);
 
         // Handle Camera Rotation (mouse look)
         float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity * Time.deltaTime;
@@ -105,26 +103,26 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
         pitch -= mouseY;
         pitch = Mathf.Clamp(pitch, minPitch, maxPitch);
 
+        smoothPitch = Mathf.SmoothDampAngle(smoothPitch, pitch, ref pitchSmoothV, smoothRotationTime);
+        smoothYaw = Mathf.SmoothDampAngle(smoothYaw, yaw, ref yawSmoothV, smoothRotationTime);
+        
+        transform.eulerAngles = Vector3.up * smoothYaw;
+
         if (cameraTransform != null)
         {
             // If in first-person aiming, position camera at eye height
             if (isFPP)
             {
                 cameraTransform.position = transform.position + Vector3.up * eyeHeight;
-                cameraTransform.rotation = Quaternion.Euler(pitch, yaw, 0f);
+                cameraTransform.rotation = Quaternion.Euler(smoothPitch, smoothYaw, 0f);
             }
             else
             {
                 // Third-person: Recompute camera position from stored offset using yaw/pitch
-                Quaternion rot = Quaternion.Euler(pitch, yaw, 0f);
+                Quaternion rot = Quaternion.Euler(smoothPitch, smoothYaw, 0f);
                 cameraTransform.position = transform.position + rot * cameraOffset;
                 cameraTransform.LookAt(transform.position + Vector3.up);
             }
-
-            // Rotate player horizontally to match camera yaw
-            Vector3 playerEuler = transform.eulerAngles;
-            playerEuler.y = yaw;
-            transform.eulerAngles = playerEuler;
         }
 
         // Input: mouse down enters aiming; mouse up performs Raycast spawn
@@ -243,8 +241,12 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
         // Directly set position and rotation
         transform.position = pos;
         Vector3 eular = rot.eulerAngles;
-        //pitch = eular.x;
-        yaw = eular.y;
+        float delta = Mathf.DeltaAngle(smoothYaw, eular.y);
+        yaw += delta;
+        smoothYaw += delta;
+        transform.eulerAngles = Vector3.up * smoothYaw;
+
+        velocity = toPortal.TransformVector(Matrix4x4.Rotate(Quaternion.Euler(0f, 180f, 0f)) * fromPortal.InverseTransformVector(velocity));
         Physics.SyncTransforms(); // Ensure physics is updated after teleportation
     }
 }

@@ -15,6 +15,7 @@ public class Portal : MonoBehaviour
     [Header("Advanced Settings")]
     public float nearClipOffset = 0.05f;
     public float nearClipLimit = 0.2f;
+    public float defaultScreenThickness = 0.002f;
 
     RenderTexture viewTexture;
     Camera portalCamera;
@@ -99,8 +100,9 @@ public class Portal : MonoBehaviour
 
     public void PrePortalRender()
     {
-        foreach (var traveller in trackedTravellers) {
-            UpdateSliceParams (traveller);
+        foreach (var traveller in trackedTravellers)
+        {
+            UpdateSliceParams(traveller);
         }
     }
 
@@ -132,7 +134,7 @@ public class Portal : MonoBehaviour
                 // Stop recursion if the linked portal is not visible from the portal camera
                 if (!CameraUtility.BoundsOverlap(screenMeshFilter, linkedPortal.screenMeshFilter, portalCamera)) break;
                 // Stop recursion if viewing back of the portal
-                if (SideOfPortal(portalCamera.transform.position) == -1) break;
+                if (linkedPortal.SideOfPortal(portalCamera.transform.position) == -1) break;
             }
 
             localToWorldMatrix = transform.localToWorldMatrix * Matrix4x4.Rotate(Quaternion.Euler(0f, 180f, 0f)) * linkedPortal.transform.worldToLocalMatrix * localToWorldMatrix;
@@ -175,10 +177,11 @@ public class Portal : MonoBehaviour
 
     public void PostPortalRender()
     {
-        foreach (var traveller in trackedTravellers) {
-            UpdateSliceParams (traveller);
+        foreach (var traveller in trackedTravellers)
+        {
+            UpdateSliceParams(traveller);
         }
-        ProtectScreenFromClipping (playerCamera.transform.position);
+        ProtectScreenFromClipping(playerCamera.transform.position);
     }
 
     void CreateViewTexture()
@@ -199,7 +202,18 @@ public class Portal : MonoBehaviour
     // Sets the thickness of the portal screen so as not to clip with camera near plane when player goes through
     float ProtectScreenFromClipping(Vector3 viewPoint)
     {
+        Transform screenT = screen.transform;
         Vector3 playerPosition = PlayerController.instance.transform.position;
+        bool camFacingSameDirAsPortal = Vector3.Dot(transform.forward, transform.position - playerPosition) > 0;
+
+        if (!trackedTravellers.Contains(PlayerController.instance.GetComponent<PortalTraveller>()))
+        {
+            // If player is not currently interacting with the portal, set default thickness
+            screenT.localScale = new Vector3(screenT.localScale.x, defaultScreenThickness, screenT.localScale.z);
+            screenT.localPosition = Vector3.forward * defaultScreenThickness * (camFacingSameDirAsPortal ? 1f : -1f);
+            return defaultScreenThickness;
+        }
+
         Vector3 playerPositionAtViewPointHeight = new Vector3(playerPosition.x, viewPoint.y, playerPosition.z);
         float nearClipPlaneDist = Vector3.Dot (transform.forward, viewPoint - playerPositionAtViewPointHeight);
 
@@ -208,8 +222,6 @@ public class Portal : MonoBehaviour
         float dstToNearClipPlaneCorner = new Vector3(halfWidth, halfHeight, nearClipPlaneDist).magnitude;
         float screenThickness = dstToNearClipPlaneCorner * 0.5f; // Cylinder height is 0.5 times this distance
 
-        Transform screenT = screen.transform;
-        bool camFacingSameDirAsPortal = Vector3.Dot(transform.forward, transform.position - playerPosition) > 0;
         screenT.localScale = new Vector3(screenT.localScale.x, screenThickness, screenT.localScale.z);
         screenT.localPosition = Vector3.forward * screenThickness *(camFacingSameDirAsPortal ? 1f : -1f);
         return screenThickness;
@@ -254,8 +266,9 @@ public class Portal : MonoBehaviour
         Vector3 cloneSliceCenter = linkedPortal.transform.position;
 
         // Calculate offset distance
-        float sliceOffsetDst = 0;
-        float cloneSliceOffsetDst = 0;
+        float screenThickness = screen.transform.localScale.y;
+        float sliceOffsetDst = screenThickness * 0.5f;
+        float cloneSliceOffsetDst = screenThickness * 0.5f;
 
         // Apply parameters to traveller materials
         for (int i = 0; i < traveller.originalMaterials.Length; i++)
