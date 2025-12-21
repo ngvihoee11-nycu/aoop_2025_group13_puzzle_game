@@ -1,10 +1,11 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 
-public class MainCamera : MonoBehaviour {
+public class MainCamera : Singleton<MainCamera> {
 
     Camera mainCamera;
-    Portal[] portals;
+    List<Portal> portals;
 
     void Awake()
     {
@@ -16,32 +17,47 @@ public class MainCamera : MonoBehaviour {
             mainCamera.cullingMask &= ~(1 << LayerMask.NameToLayer("FPPHide"));
         }
 
-        portals = FindObjectsOfType<Portal> ();
+        portals = new List<Portal>(FindObjectsOfType<Portal>());
 
     }
 
-    protected void OnEnable()
+    public Camera GetCamera()
+    {
+        return mainCamera;
+    }
+
+    public void AddPortal(Portal portal)
+    {
+        portals.Add(portal);
+    }
+
+    public void RemovePortal(Portal portal)
+    {
+        portals.Remove(portal);
+    }
+
+    void OnEnable()
     {
         RenderPipelineManager.beginCameraRendering += CustomOnBeginCameraRendering;
     }
 
-    private void OnDisable()
+    void OnDisable()
     {
         RenderPipelineManager.beginCameraRendering -= CustomOnBeginCameraRendering;
     }
 
-    private void CustomOnBeginCameraRendering(ScriptableRenderContext SRC, Camera camera)
+    void CustomOnBeginCameraRendering(ScriptableRenderContext SRC, Camera mainCamera)
     {
-        for (int i = 0; i < portals.Length; i++) {
-            portals[i].PrePortalRender();
+        for (int i = 0; i < portals.Count; i++) {
+            if (portals[i].linkedPortal) portals[i].PrePortalRender();
         }
 
-        for (int i = 0; i < portals.Length; i++)
+        for (int i = 0; i < portals.Count; i++)
         {
             if (portals[i].linkedPortal) portals[i].Render(SRC);
         }
 
-        for (int i = 0; i < portals.Length; i++) {
+        for (int i = 0; i < portals.Count; i++) {
             if (portals[i].linkedPortal) portals[i].PostPortalRender();
         }
     }

@@ -26,14 +26,14 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
     public float smoothRotationTime = 0.1f;
     public float pitch = 0f;
     public float yaw = 0f;
+    private Camera mainCamera;
     private float smoothPitch;
     private float smoothYaw;
     private float pitchSmoothV;
     private float yawSmoothV;
 
     [Header("Shooting")]
-    public GameObject leftPortalPrefab;
-    public GameObject rightPortalPrefab;
+    public GameObject portalPrefab;
     public float maxShootDistance = 100f;
     public float spawnOffset = 0.02f; // offset from surface to avoid z-fighting
 
@@ -45,15 +45,16 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
 
     void Start()
     {
+        mainCamera = MainCamera.instance.GetCamera();
         characterController = GetComponent<CharacterController>();
         if (characterController == null)
         {
             Debug.LogError("CharacterController component is missing on Player!");
         }
 
-        if (cameraTransform == null && Camera.main != null)
+        if (cameraTransform == null && mainCamera != null)
         {
-            cameraTransform = Camera.main.transform;
+            cameraTransform = mainCamera.transform;
         }
 
         if (cameraTransform != null)
@@ -167,12 +168,12 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
 
         Ray ray = new Ray(cameraTransform.position, cameraTransform.forward);
         RaycastHit hit;
-        if (Physics.Raycast(ray, out hit, maxShootDistance))
+        int layerMask = ~(1 << LayerMask.NameToLayer("FPPHide") | 1 << LayerMask.NameToLayer("Portal")); // Ignore FPPHide layer
+        if (Physics.Raycast(ray, out hit, maxShootDistance, layerMask))
         {
-            GameObject prefabToSpawn = (button == 0) ? leftPortalPrefab : rightPortalPrefab;
-            if (prefabToSpawn == null)
+            if (portalPrefab == null)
             {
-                Debug.LogWarning("No spawn prefab assigned for button " + button);
+                Debug.LogWarning("No spawn prefab assigned for portals.");
                 return;
             }
 
@@ -182,8 +183,26 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
             // Align object's up to the hit normal
             Quaternion spawnRot = Quaternion.FromToRotation(Vector3.forward, hit.normal);
 
-            if (button == 0) portal1 = Instantiate(prefabToSpawn, spawnPos, spawnRot).GetComponent<Portal>();
-            else if (button == 1) portal2 = Instantiate(prefabToSpawn, spawnPos, spawnRot).GetComponent<Portal>();
+            if (button == 0)
+            {
+                if (portal1 != null)
+                {
+                    Destroy(portal1.gameObject);
+                }
+                portal1 = Instantiate(portalPrefab, spawnPos, spawnRot).GetComponent<Portal>();
+                portal1.attachedSurface = hit.collider.gameObject;
+            }
+            else if (button == 1)
+            {
+                if (portal2 != null)
+                {
+                    Destroy(portal2.gameObject);
+                }
+                portal2 = Instantiate(portalPrefab, spawnPos, spawnRot).GetComponent<Portal>();
+                portal2.attachedSurface = hit.collider.gameObject;
+                portal2.isSecondPortal = true;
+                portal2.UpdateFrameColor();
+            }
             // Link portals if both exist
             if (portal1 != null && portal2 != null)
             {
@@ -203,7 +222,7 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
             {
                 cameraTransform.position = transform.position + Vector3.up * eyeHeight;
                 cameraTransform.rotation = Quaternion.Euler(pitch, yaw, 0f);
-                Camera.main.cullingMask &= ~(1 << LayerMask.NameToLayer("FPPHide"));
+                mainCamera.cullingMask &= ~(1 << LayerMask.NameToLayer("FPPHide"));
             }
         }
         
@@ -221,19 +240,37 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
                 Quaternion rot = Quaternion.Euler(pitch, yaw, 0f);
                 cameraTransform.position = transform.position + rot * cameraOffset;
                 cameraTransform.LookAt(transform.position + Vector3.up);
-                Camera.main.cullingMask |= 1 << LayerMask.NameToLayer("FPPHide");
+                mainCamera.cullingMask |= 1 << LayerMask.NameToLayer("FPPHide");
             }
         }
     }
 
     public override void EnterPortalTrigger()
     {
-        base.EnterPortalTrigger();
-        graphicsClone.layer = LayerMask.NameToLayer("FPPHidePortal");
-        foreach (Transform child in graphicsClone.transform)
+        if (graphicsClone == null)
         {
-            child.gameObject.layer = LayerMask.NameToLayer("FPPHidePortal");
+            graphicsClone = Instantiate(graphicsObject);
+            graphicsClone.transform.parent = graphicsObject.transform.parent;
+            graphicsClone.transform.localScale = graphicsObject.transform.localScale;
+            graphicsClone.layer = LayerMask.NameToLayer("FPPHidePortal");
+
+            foreach (Transform child in graphicsClone.transform)
+            {
+                child.gameObject.layer = LayerMask.NameToLayer("FPPHidePortal");
+            }
+
+            originalMaterials = GetMaterials(graphicsObject);
+            cloneMaterials = GetMaterials(graphicsClone);
         }
+        else
+        {
+            graphicsClone.SetActive(true);
+        }
+    }
+
+    public override void IgnoreCollision(Collider other, bool ignore)
+    {
+        Physics.IgnoreCollision(GetComponent<CharacterController>(), other, ignore);
     }
 
     public override void Teleport(Transform fromPortal, Transform toPortal, Vector3 pos, Quaternion rot)
@@ -245,8 +282,7 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
         yaw += delta;
         smoothYaw += delta;
         transform.eulerAngles = Vector3.up * smoothYaw;
-
-        velocity = toPortal.TransformVector(Matrix4x4.Rotate(Quaternion.Euler(0f, 180f, 0f)) * fromPortal.InverseTransformVector(velocity));
+        velocity = toPortal.TransformVector(Matrix4x4.Rotate(Quaternion.Euler(0f, 180f, 0f)).MultiplyVector(fromPortal.InverseTransformVector(velocity)));
         Physics.SyncTransforms(); // Ensure physics is updated after teleportation
     }
 }

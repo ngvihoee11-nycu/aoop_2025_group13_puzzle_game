@@ -46,6 +46,15 @@ public class PortalTraveller : MonoBehaviour
         }
     }
 
+    public virtual void IgnoreCollision(Collider other, bool ignore)
+    {
+        Collider[] colliders = GetComponentsInChildren<Collider>();
+        foreach (var col in colliders)
+        {
+            Physics.IgnoreCollision(col, other, ignore);
+        }
+    }
+
     public void SetOffsetDst(float dst, bool isClone)
     {
         for (int i = 0; i < originalMaterials.Length; i++)
@@ -61,7 +70,7 @@ public class PortalTraveller : MonoBehaviour
         }
     }
 
-    Material[] GetMaterials(GameObject obj)
+    protected Material[] GetMaterials(GameObject obj)
     {
         MeshRenderer[] renderers = obj.GetComponentsInChildren<MeshRenderer>();
         List<Material> materials = new List<Material>();

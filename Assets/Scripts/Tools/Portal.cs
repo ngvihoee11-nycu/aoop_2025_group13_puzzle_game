@@ -10,7 +10,9 @@ public class Portal : MonoBehaviour
     public GameObject attachedSurface;
     public Portal linkedPortal;
     public MeshRenderer screen;
+    public MeshRenderer frame;
     public int recursionLimit = 3;
+    public bool isSecondPortal = false;
 
     [Header("Advanced Settings")]
     public float nearClipOffset = 0.05f;
@@ -20,22 +22,31 @@ public class Portal : MonoBehaviour
     RenderTexture viewTexture;
     Camera portalCamera;
     Camera playerCamera;
-    List<PortalTraveller> trackedTravellers;
+    public List<PortalTraveller> trackedTravellers;
     MeshFilter screenMeshFilter;
     
     void Awake()
     {
-        playerCamera = Camera.main;
         portalCamera = GetComponentInChildren<Camera>();
         portalCamera.enabled = false;
         trackedTravellers = new List<PortalTraveller>();
         screenMeshFilter = screen.GetComponent<MeshFilter>();
         screen.material.SetInt("displayMask", 1);
+        UpdateFrameColor();
+    }
+
+    void Start()
+    {
+        playerCamera = MainCamera.instance.GetCamera();
+        MainCamera.instance.AddPortal(this);
     }
 
     void LateUpdate()
     {
-        HandleTravellers();
+        if (linkedPortal != null)
+        {
+            HandleTravellers();
+        }
     }
     
     void HandleTravellers()
@@ -76,10 +87,15 @@ public class Portal : MonoBehaviour
             traveller.EnterPortalTrigger();
             traveller.prevOffsetFromPortal = traveller.transform.position - transform.position;
             trackedTravellers.Add(traveller);
+            if (attachedSurface)
+            {
+                Collider surfaceCollider = attachedSurface.GetComponent<Collider>();
+                traveller.IgnoreCollision(surfaceCollider, true);
+            }
         }
     }
 
-    void OnTriggerEnter(Collider other)
+    public void ChildTriggerEnter(Collider other)
     {
         PortalTraveller traveller = other.GetComponent<PortalTraveller>();
         if (traveller)
@@ -88,15 +104,50 @@ public class Portal : MonoBehaviour
         }
     }
 
-    void OnTriggerExit(Collider other)
+    public void ChildTriggerExit(Collider other)
     {
         PortalTraveller traveller = other.GetComponent<PortalTraveller>();
         if (traveller && trackedTravellers.Contains(traveller))
         {
             traveller.ExitPortalTrigger();
             trackedTravellers.Remove(traveller);
+            if (attachedSurface)
+            {
+                Collider surfaceCollider = attachedSurface.GetComponent<Collider>();
+                traveller.IgnoreCollision(surfaceCollider, false);
+            }
         }
     }
+
+    void OnDestroy()
+    {
+        if (linkedPortal && linkedPortal.linkedPortal == this)
+        {
+            linkedPortal.linkedPortal = null;
+            linkedPortal.screen.material.SetTexture("_MainTex", null);
+        }
+        if (viewTexture)
+        {
+            viewTexture.Release();
+        }
+        if (MainCamera.instance)
+        {
+            MainCamera.instance.RemovePortal(this);
+        }
+    }
+
+    public void UpdateFrameColor()
+    {
+        if (isSecondPortal)
+        {
+            frame.material.SetColor("_Color", new Color(1f, 0.6470588f, 0f, 1f));
+        }
+        else
+        {
+            frame.material.SetColor("_Color", new Color(0f, 0.6705089f, 1f, 1f));
+        }
+    }
+
 
     public void PrePortalRender()
     {
