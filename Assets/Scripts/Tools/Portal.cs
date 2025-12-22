@@ -1,47 +1,365 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 using UnityEngine;
 
 public class Portal : MonoBehaviour
 {
-    public Transform linkedPortal;
-    
-    void OnTriggerEnter(Collider other)
+    [Header("Main Settings")]
+    public Collider attachedSurface;
+    public Portal linkedPortal;
+    public MeshRenderer screen;
+    public MeshRenderer frame;
+    public GameObject trigger;
+    public int recursionLimit = 3;
+    public bool isSecondPortal = false;
+    public static float spawnOffset = 0.02f;
+
+    [Header("Advanced Settings")]
+    public float nearClipOffset = 0.05f;
+    public float nearClipLimit = 0.2f;
+    public float defaultScreenThickness = 0.002f;
+
+
+    RenderTexture viewTexture;
+    Camera portalCamera;
+    Camera playerCamera;
+    public List<PortalTraveller> trackedTravellers;
+    MeshFilter screenMeshFilter;
+
+    public static Portal SpawnPortal(GameObject portalPrefab, Portal linkedPortal, RaycastHit hit, Transform camT, bool isSecondPortal)
     {
-        if (other.CompareTag("Player"))
+        Portal newPortal = Instantiate(portalPrefab).GetComponent<Portal>();
+        if (linkedPortal)
         {
-            if (linkedPortal == null) return;
+            newPortal.linkedPortal = linkedPortal;
+            newPortal.linkedPortal.linkedPortal = newPortal;
+        }
+        newPortal.transform.SetPositionAndRotation(hit.point + hit.normal * spawnOffset, Quaternion.LookRotation(hit.normal, camT ? camT.up : Vector3.up));
+        newPortal.attachedSurface = hit.collider;
+        newPortal.isSecondPortal = isSecondPortal;
+        newPortal.UpdateFrameColor();
+        return newPortal;
+    }
+    
+    void Awake()
+    {
+        portalCamera = GetComponentInChildren<Camera>();
+        portalCamera.enabled = false;
+        trackedTravellers = new List<PortalTraveller>();
+        screenMeshFilter = screen.GetComponent<MeshFilter>();
+        screen.material.SetInt("displayMask", 1);
+        UpdateFrameColor();
+    }
 
-            PlayerController player = other.GetComponent<PlayerController>();
+    void Start()
+    {
+        playerCamera = MainCamera.instance.GetCamera();
+        MainCamera.instance.AddPortal(this);
+    }
 
-            if (player == null) return;
+    void LateUpdate()
+    {
+        if (linkedPortal)
+        {
+            trigger.SetActive(true);
+            HandleTravellers();
+        }
+        else
+        {
+            trigger.SetActive(false);
+        }
+    }
+    
+    void HandleTravellers()
+    {
+        for (int i = trackedTravellers.Count - 1; i >= 0; i--)
+        {
+            PortalTraveller traveller = trackedTravellers[i];
+            Matrix4x4 m = linkedPortal.transform.localToWorldMatrix * Matrix4x4.Rotate(Quaternion.Euler(0f, 180f, 0f)) * transform.worldToLocalMatrix * traveller.transform.localToWorldMatrix;
 
-            player.enabled = false;
+            Vector3 offsetFromPortal = traveller.transform.position - transform.position;
+            int portalSide = System.Math.Sign(Vector3.Dot(transform.forward, offsetFromPortal));
+            int prevPortalSide = System.Math.Sign(Vector3.Dot(transform.forward, traveller.prevOffsetFromPortal));
 
-            Vector3 portalToPlayer = player.transform.position - transform.position;
-            float dotProduct = Vector3.Dot(transform.forward, portalToPlayer);
-
-            // Check if the player is entering the portal from the front
-            if (dotProduct > 0f)
+            // Check if the traveller has crossed the portal plane
+            if (portalSide == -1 && prevPortalSide == 1)
             {
-                // Calculate the player's position relative to the portal
-                Vector3 localPosition = transform.InverseTransformPoint(player.transform.position);
-                Vector3 mirroredPosition = new Vector3(-localPosition.x, localPosition.y, localPosition.z);
-                Vector3 linkedPosition = linkedPortal.TransformPoint(mirroredPosition) + linkedPortal.forward * 0.5f; // Offset to avoid immediate re-triggering
+                var positionOld = traveller.transform.position;
+                var rotOld = traveller.transform.rotation;
+                // Teleport the traveller to the linked portal
+                traveller.Teleport(transform, linkedPortal.transform, m.GetPosition(), m.rotation);
+                traveller.AdjustClone(transform, linkedPortal.transform, positionOld, rotOld);
+                traveller.IgnoreCollision(attachedSurface, false);
+                linkedPortal.OnTravellerEnter(traveller); // Notify the linked portal of the traveller's entry
+                trackedTravellers.RemoveAt(i);
+            }
+            else
+            {
+                traveller.AdjustClone(transform, linkedPortal.transform, m.GetPosition(), m.rotation);
+                // Update the previous offset
+                traveller.prevOffsetFromPortal = offsetFromPortal;
+            }
+        }
+    }
 
-                // Calculate the player's rotation relative to the portal
-                Quaternion localRotation = Quaternion.Inverse(transform.rotation) * Quaternion.Euler(player.pitch, player.yaw + 180, 0);
-                Quaternion linkedRotation = linkedPortal.rotation * localRotation;
-                Vector3 linkedEular = linkedRotation.eulerAngles;
+    void OnTravellerEnter(PortalTraveller traveller)
+    {
+        if (!trackedTravellers.Contains(traveller))
+        {
+            traveller.EnterPortalTrigger();
+            traveller.prevOffsetFromPortal = traveller.transform.position - transform.position;
+            trackedTravellers.Add(traveller);
+            if (attachedSurface)
+            {
+                traveller.IgnoreCollision(attachedSurface, true);
+            }
+        }
+    }
 
-                // Teleport the player to the linked portal's position and rotation
-                player.transform.position = linkedPosition;
-                player.pitch = linkedEular.x;
-                player.yaw = linkedEular.y;
+    public void ChildTriggerEnter(Collider other)
+    {
+        PortalTraveller traveller = other.GetComponent<PortalTraveller>();
+        if (traveller)
+        {
+            OnTravellerEnter(traveller);
+        }
+    }
 
-                Physics.SyncTransforms(); // Ensure physics is updated after teleportation
+    public void ChildTriggerExit(Collider other)
+    {
+        PortalTraveller traveller = other.GetComponent<PortalTraveller>();
+        if (traveller && trackedTravellers.Contains(traveller))
+        {
+            traveller.ExitPortalTrigger();
+            trackedTravellers.Remove(traveller);
+            if (attachedSurface)
+            {
+                traveller.IgnoreCollision(attachedSurface, false);
+            }
+        }
+    }
+
+    void OnDestroy()
+    {
+        if (linkedPortal && linkedPortal.linkedPortal == this)
+        {
+            linkedPortal.linkedPortal = null;
+            linkedPortal.screen.material.SetTexture("_MainTex", null);
+        }
+        if (viewTexture)
+        {
+            viewTexture.Release();
+        }
+        if (MainCamera.instance)
+        {
+            MainCamera.instance.RemovePortal(this);
+        }
+    }
+
+    public void UpdateFrameColor()
+    {
+        if (isSecondPortal)
+        {
+            frame.material.SetColor("_Color", new Color(1f, 0.6470588f, 0f, 1f));
+        }
+        else
+        {
+            frame.material.SetColor("_Color", new Color(0f, 0.6705089f, 1f, 1f));
+        }
+    }
+
+
+    public void PrePortalRender()
+    {
+        foreach (var traveller in trackedTravellers)
+        {
+            UpdateSliceParams(traveller);
+        }
+    }
+
+    public void Render(ScriptableRenderContext SRC)
+    {
+
+        // Skip rendering if linked portal is not set
+        if (linkedPortal == null) return;
+        // Skip rendering if not visible to player camera
+        if (!CameraUtility.VisibleFromCamera(linkedPortal.screen, playerCamera)) return;
+        // Display Inactive color if viewing back of the portal
+        if (linkedPortal.SideOfPortal(playerCamera.transform.position) == -1)
+        {
+            linkedPortal.screen.material.SetInt("displayMask", 0);
+            return;
+        }
+
+        CreateViewTexture();
+
+        Matrix4x4 localToWorldMatrix = playerCamera.transform.localToWorldMatrix;
+        Vector3[] renderPositions = new Vector3[recursionLimit];
+        Quaternion[] renderRotations = new Quaternion[recursionLimit];
+
+        int startIndex = 0;
+        for (int i = 0; i < recursionLimit; i++)
+        {
+            if (i > 0)
+            {
+                // Stop recursion if the linked portal is not visible from the portal camera
+                if (!CameraUtility.BoundsOverlap(screenMeshFilter, linkedPortal.screenMeshFilter, portalCamera)) break;
+                // Stop recursion if viewing back of the portal
+                if (linkedPortal.SideOfPortal(portalCamera.transform.position) == -1) break;
             }
 
-            player.enabled = true;
+            localToWorldMatrix = transform.localToWorldMatrix * Matrix4x4.Rotate(Quaternion.Euler(0f, 180f, 0f)) * linkedPortal.transform.worldToLocalMatrix * localToWorldMatrix;
+            int renderOrder = recursionLimit - 1 - i;
+            renderPositions[renderOrder] = localToWorldMatrix.GetPosition();
+            renderRotations[renderOrder] = localToWorldMatrix.rotation;
+
+            portalCamera.transform.SetPositionAndRotation(renderPositions[renderOrder], renderRotations[renderOrder]);
+            startIndex = renderOrder;
         }
+
+        screen.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly;
+
+        linkedPortal.screen.material.SetInt("displayMask", 0);
+        portalCamera.cullingMask = -1;
+
+        for (int i = startIndex; i < recursionLimit; i++)
+        {
+            portalCamera.transform.SetPositionAndRotation(renderPositions[i], renderRotations[i]);
+            SetNearClipPlane();
+
+            if (PlayerController.instance.isFPP && i == recursionLimit - 1)
+            {
+                portalCamera.cullingMask &= ~(1 << LayerMask.NameToLayer("FPPHidePortal"));
+            }
+
+            // Warning says RenderSingleCamera is obsolete, but the alternative is broken in current version
+            #pragma warning disable CS0618
+            UniversalRenderPipeline.RenderSingleCamera(SRC, portalCamera);
+            #pragma warning restore CS0618
+
+            if (i == startIndex)
+            {
+                linkedPortal.screen.material.SetInt("displayMask", 1);
+            }
+        }
+        
+        screen.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
+    }
+
+    public void PostPortalRender()
+    {
+        foreach (var traveller in trackedTravellers)
+        {
+            UpdateSliceParams(traveller);
+        }
+        ProtectScreenFromClipping(playerCamera.transform.position);
+    }
+
+    void CreateViewTexture()
+    {
+        // This method can be used to create the render texture for the portal view
+        if (viewTexture == null || viewTexture.width != Screen.width || viewTexture.height != Screen.height)
+        {
+            if (viewTexture)
+            {
+                viewTexture.Release();
+            }
+            viewTexture = new RenderTexture(Screen.width, Screen.height, 0);
+            portalCamera.targetTexture = viewTexture;
+            linkedPortal.screen.material.SetTexture("_MainTex", viewTexture);
+        }
+    }
+
+    // Sets the thickness of the portal screen so as not to clip with camera near plane when player goes through
+    float ProtectScreenFromClipping(Vector3 viewPoint)
+    {
+        Transform screenT = screen.transform;
+        Vector3 playerPosition = PlayerController.instance.transform.position;
+        bool camFacingSameDirAsPortal = Vector3.Dot(transform.forward, transform.position - playerPosition) > 0;
+
+        if (!trackedTravellers.Contains(PlayerController.instance.GetComponent<PortalTraveller>()))
+        {
+            // If player is not currently interacting with the portal, set default thickness
+            screenT.localScale = new Vector3(screenT.localScale.x, defaultScreenThickness, screenT.localScale.z);
+            screenT.localPosition = Vector3.forward * defaultScreenThickness * (camFacingSameDirAsPortal ? 1f : -1f);
+            return defaultScreenThickness;
+        }
+
+        Vector3 playerPositionAtViewPointHeight = new Vector3(playerPosition.x, viewPoint.y, playerPosition.z);
+        float nearClipPlaneDist = Vector3.Dot (transform.forward, viewPoint - playerPositionAtViewPointHeight);
+
+        float halfHeight = playerCamera.nearClipPlane * Mathf.Tan(playerCamera.fieldOfView * 0.5f * Mathf.Deg2Rad);
+        float halfWidth = halfHeight * playerCamera.aspect;
+        float dstToNearClipPlaneCorner = new Vector3(halfWidth, halfHeight, nearClipPlaneDist).magnitude;
+        float screenThickness = dstToNearClipPlaneCorner * 0.5f; // Cylinder height is 0.5 times this distance
+
+        screenT.localScale = new Vector3(screenT.localScale.x, screenThickness, screenT.localScale.z);
+        screenT.localPosition = Vector3.forward * screenThickness *(camFacingSameDirAsPortal ? 1f : -1f);
+        return screenThickness;
+    }
+
+    // Use custom projection matrix to align portal camera's near clip plane with the surface of the portal
+    // Note that this affects precision of the depth buffer, which can cause issues with effects like screenspace AO
+    void SetNearClipPlane()
+    {
+        // Learning resource:
+        // http://www.terathon.com/lengyel/Lengyel-Oblique.pdf
+        Transform clipPlane = transform;
+        int dot = System.Math.Sign(Vector3.Dot(clipPlane.forward, transform.position - portalCamera.transform.position));
+
+        Vector3 camSpacePos = portalCamera.worldToCameraMatrix.MultiplyPoint (clipPlane.position);
+        Vector3 camSpaceNormal = portalCamera.worldToCameraMatrix.MultiplyVector (clipPlane.forward) * dot;
+        float camSpaceDst = -Vector3.Dot (camSpacePos, camSpaceNormal) + nearClipOffset;
+
+        // Don't use oblique clip plane if very close to portal as it seems this can cause some visual artifacts
+        if (Mathf.Abs(camSpaceDst) > nearClipLimit)
+        {
+            Vector4 clipPlaneCameraSpace = new Vector4(camSpaceNormal.x, camSpaceNormal.y, camSpaceNormal.z, camSpaceDst);
+
+            // Update projection based on new clip plane
+            // Calculate matrix with player cam so that player camera settings (fov, etc) are used
+            portalCamera.projectionMatrix = playerCamera.CalculateObliqueMatrix(clipPlaneCameraSpace);
+        }
+        else
+        {
+            portalCamera.projectionMatrix = playerCamera.projectionMatrix;
+        }
+    }
+
+    void UpdateSliceParams(PortalTraveller traveller)
+    {
+        // Calculate slice normal
+        Vector3 sliceNormal = -transform.forward;
+        Vector3 cloneSliceNormal = -linkedPortal.transform.forward;
+
+        // Calculate slice center
+        Vector3 sliceCenter = transform.position;
+        Vector3 cloneSliceCenter = linkedPortal.transform.position;
+
+        // Calculate offset distance
+        float screenThickness = screen.transform.localScale.y;
+        float sliceOffsetDst = screenThickness * 0.5f;
+        float cloneSliceOffsetDst = screenThickness * 0.5f;
+
+        // Apply parameters to traveller materials
+        for (int i = 0; i < traveller.originalMaterials.Length; i++)
+        {
+            traveller.originalMaterials[i].SetVector("_sliceNormal", sliceNormal);
+            traveller.originalMaterials[i].SetVector("_sliceCenter", sliceCenter);
+            traveller.originalMaterials[i].SetFloat("_sliceOffsetDst", sliceOffsetDst);
+
+            traveller.cloneMaterials[i].SetVector("_sliceNormal", cloneSliceNormal);
+            traveller.cloneMaterials[i].SetVector("_sliceCenter", cloneSliceCenter);
+            traveller.cloneMaterials[i].SetFloat("_sliceOffsetDst", cloneSliceOffsetDst);
+        }
+    }
+
+
+    int SideOfPortal(Vector3 pos)
+    {
+        return System.Math.Sign(Vector3.Dot(pos - transform.position, transform.forward));
     }
 
 }
