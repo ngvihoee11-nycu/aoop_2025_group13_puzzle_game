@@ -21,8 +21,8 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
     public Vector3 cameraOffset;
     public Transform cameraTransform;
     public float mouseSensitivity = 100f;
-    public float minPitch = -40f;
-    public float maxPitch = 85f;
+    public float minPitch = -89.9f;
+    public float maxPitch = 89.9f;
     public float smoothRotationTime = 0.1f;
     public float pitch = 0f;
     public float yaw = 0f;
@@ -35,8 +35,6 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
     [Header("Shooting")]
     public GameObject portalPrefab;
     public float maxShootDistance = 100f;
-    public float spawnOffset = 0.02f; // offset from surface to avoid z-fighting
-
     private bool isAimingLeft = false;
     private bool isAimingRight = false;
 
@@ -109,6 +107,11 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
         
         transform.eulerAngles = Vector3.up * smoothYaw;
 
+        if (graphicsObject.transform != null)
+        {
+            graphicsObject.transform.localRotation = Quaternion.Slerp(graphicsObject.transform.localRotation, Quaternion.Euler(0f, 0f, 0f), Time.deltaTime * 5f);
+        }
+
         if (cameraTransform != null)
         {
             // If in first-person aiming, position camera at eye height
@@ -177,20 +180,13 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
                 return;
             }
 
-            // Place slightly above surface along the normal to avoid clipping
-            Vector3 spawnPos = hit.point + hit.normal * spawnOffset;
-
-            // Align object's up to the hit normal
-            Quaternion spawnRot = Quaternion.FromToRotation(Vector3.forward, hit.normal);
-
             if (button == 0)
             {
                 if (portal1 != null)
                 {
                     Destroy(portal1.gameObject);
                 }
-                portal1 = Instantiate(portalPrefab, spawnPos, spawnRot).GetComponent<Portal>();
-                portal1.attachedSurface = hit.collider.gameObject;
+                portal1 = Portal.SpawnPortal(portalPrefab, portal2, hit, cameraTransform, false);
             }
             else if (button == 1)
             {
@@ -198,16 +194,7 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
                 {
                     Destroy(portal2.gameObject);
                 }
-                portal2 = Instantiate(portalPrefab, spawnPos, spawnRot).GetComponent<Portal>();
-                portal2.attachedSurface = hit.collider.gameObject;
-                portal2.isSecondPortal = true;
-                portal2.UpdateFrameColor();
-            }
-            // Link portals if both exist
-            if (portal1 != null && portal2 != null)
-            {
-                portal1.linkedPortal = portal2;
-                portal2.linkedPortal = portal1;
+                portal2 = Portal.SpawnPortal(portalPrefab, portal1, hit, cameraTransform, true);
             }
         }
     }
@@ -273,16 +260,32 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
         Physics.IgnoreCollision(GetComponent<CharacterController>(), other, ignore);
     }
 
+    public override void AdjustClone(Transform fromPortal, Transform toPortal, Vector3 pos, Quaternion rot)
+    {
+        graphicsClone.transform.position = pos;
+        graphicsClone.transform.rotation = (toPortal.localToWorldMatrix * Matrix4x4.Rotate(Quaternion.Euler(0f, 180f, 0f)) * fromPortal.worldToLocalMatrix * graphicsObject.transform.localToWorldMatrix).rotation;
+    }
+
     public override void Teleport(Transform fromPortal, Transform toPortal, Vector3 pos, Quaternion rot)
     {
         // Directly set position and rotation
         transform.position = pos;
-        Vector3 eular = rot.eulerAngles;
-        float delta = Mathf.DeltaAngle(smoothYaw, eular.y);
-        yaw += delta;
-        smoothYaw += delta;
+
+        Matrix4x4 teleportMatrix = toPortal.localToWorldMatrix * Matrix4x4.Rotate(Quaternion.Euler(0f, 180f, 0f)) * fromPortal.worldToLocalMatrix;
+
+        Matrix4x4 m = teleportMatrix * cameraTransform.localToWorldMatrix;
+        Quaternion rotation = m.rotation;
+        Vector3 eular = rotation.eulerAngles;
+        float deltaPitch = Mathf.DeltaAngle(smoothPitch, eular.x);
+        float deltaYaw = Mathf.DeltaAngle(smoothYaw, eular.y);
+        pitch += deltaPitch;
+        pitch = Mathf.Clamp(pitch, minPitch, maxPitch);
+        smoothPitch += deltaPitch;
+        yaw += deltaYaw;
+        smoothYaw += deltaYaw;
         transform.eulerAngles = Vector3.up * smoothYaw;
         velocity = toPortal.TransformVector(Matrix4x4.Rotate(Quaternion.Euler(0f, 180f, 0f)).MultiplyVector(fromPortal.InverseTransformVector(velocity)));
+        graphicsObject.transform.rotation = (teleportMatrix * graphicsObject.transform.localToWorldMatrix).rotation;
         Physics.SyncTransforms(); // Ensure physics is updated after teleportation
     }
 }

@@ -914,15 +914,14 @@ MonoBehaviour:
   cameraOffset: {x: 0, y: 0, z: -3}
   cameraTransform: {fileID: 330585546}
   mouseSensitivity: 500
-  minPitch: -40
-  maxPitch: 85
+  minPitch: -90
+  maxPitch: 90
   smoothRotationTime: 0.1
   pitch: 0
   yaw: 0
   portalPrefab: {fileID: 3156081837618832756, guid: d0799209de2c12e4e8421958aa7229ae,
     type: 3}
   maxShootDistance: 100
-  spawnOffset: 0.02
 --- !u!143 &1021661225
 CharacterController:
   m_ObjectHideFlags: 0

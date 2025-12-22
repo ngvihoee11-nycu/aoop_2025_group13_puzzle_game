@@ -12,9 +12,14 @@ public class PortalTraveller : MonoBehaviour
     
     public virtual void Teleport(Transform fromPortal, Transform toPortal, Vector3 pos, Quaternion rot)
     {
-        // This method can be overridden by derived classes to implement teleportation logic
         transform.position = pos;
         transform.rotation = rot;
+    }
+
+    public virtual void AdjustClone(Transform fromPortal, Transform toPortal, Vector3 pos, Quaternion rot)
+    {
+        graphicsClone.transform.position = pos;
+        graphicsClone.transform.rotation = rot;
     }
 
     public virtual void EnterPortalTrigger()

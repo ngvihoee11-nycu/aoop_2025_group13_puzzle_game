@@ -7,23 +7,41 @@ using UnityEngine;
 public class Portal : MonoBehaviour
 {
     [Header("Main Settings")]
-    public GameObject attachedSurface;
+    public Collider attachedSurface;
     public Portal linkedPortal;
     public MeshRenderer screen;
     public MeshRenderer frame;
+    public GameObject trigger;
     public int recursionLimit = 3;
     public bool isSecondPortal = false;
+    public static float spawnOffset = 0.02f;
 
     [Header("Advanced Settings")]
     public float nearClipOffset = 0.05f;
     public float nearClipLimit = 0.2f;
     public float defaultScreenThickness = 0.002f;
 
+
     RenderTexture viewTexture;
     Camera portalCamera;
     Camera playerCamera;
     public List<PortalTraveller> trackedTravellers;
     MeshFilter screenMeshFilter;
+
+    public static Portal SpawnPortal(GameObject portalPrefab, Portal linkedPortal, RaycastHit hit, Transform camT, bool isSecondPortal)
+    {
+        Portal newPortal = Instantiate(portalPrefab).GetComponent<Portal>();
+        if (linkedPortal)
+        {
+            newPortal.linkedPortal = linkedPortal;
+            newPortal.linkedPortal.linkedPortal = newPortal;
+        }
+        newPortal.transform.SetPositionAndRotation(hit.point + hit.normal * spawnOffset, Quaternion.LookRotation(hit.normal, camT ? camT.up : Vector3.up));
+        newPortal.attachedSurface = hit.collider;
+        newPortal.isSecondPortal = isSecondPortal;
+        newPortal.UpdateFrameColor();
+        return newPortal;
+    }
     
     void Awake()
     {
@@ -43,9 +61,14 @@ public class Portal : MonoBehaviour
 
     void LateUpdate()
     {
-        if (linkedPortal != null)
+        if (linkedPortal)
         {
+            trigger.SetActive(true);
             HandleTravellers();
+        }
+        else
+        {
+            trigger.SetActive(false);
         }
     }
     
@@ -67,13 +90,14 @@ public class Portal : MonoBehaviour
                 var rotOld = traveller.transform.rotation;
                 // Teleport the traveller to the linked portal
                 traveller.Teleport(transform, linkedPortal.transform, m.GetPosition(), m.rotation);
-                traveller.graphicsClone.transform.SetPositionAndRotation (positionOld, rotOld);
+                traveller.AdjustClone(transform, linkedPortal.transform, positionOld, rotOld);
+                traveller.IgnoreCollision(attachedSurface, false);
                 linkedPortal.OnTravellerEnter(traveller); // Notify the linked portal of the traveller's entry
                 trackedTravellers.RemoveAt(i);
             }
             else
             {
-                traveller.graphicsClone.transform.SetPositionAndRotation(m.GetPosition(), m.rotation);
+                traveller.AdjustClone(transform, linkedPortal.transform, m.GetPosition(), m.rotation);
                 // Update the previous offset
                 traveller.prevOffsetFromPortal = offsetFromPortal;
             }
@@ -89,8 +113,7 @@ public class Portal : MonoBehaviour
             trackedTravellers.Add(traveller);
             if (attachedSurface)
             {
-                Collider surfaceCollider = attachedSurface.GetComponent<Collider>();
-                traveller.IgnoreCollision(surfaceCollider, true);
+                traveller.IgnoreCollision(attachedSurface, true);
             }
         }
     }
@@ -113,8 +136,7 @@ public class Portal : MonoBehaviour
             trackedTravellers.Remove(traveller);
             if (attachedSurface)
             {
-                Collider surfaceCollider = attachedSurface.GetComponent<Collider>();
-                traveller.IgnoreCollision(surfaceCollider, false);
+                traveller.IgnoreCollision(attachedSurface, false);
             }
         }
     }
