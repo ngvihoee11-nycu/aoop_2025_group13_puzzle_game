@@ -224,29 +224,6 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
         }
     }
 
-    public override void EnterPortalTrigger()
-    {
-        if (graphicsClone == null)
-        {
-            graphicsClone = Instantiate(graphicsObject);
-            graphicsClone.transform.parent = graphicsObject.transform.parent;
-            graphicsClone.transform.localScale = graphicsObject.transform.localScale;
-            graphicsClone.layer = LayerMask.NameToLayer("FPPHidePortal");
-
-            foreach (Transform child in graphicsClone.transform)
-            {
-                child.gameObject.layer = LayerMask.NameToLayer("FPPHidePortal");
-            }
-
-            originalMaterials = GetMaterials(graphicsObject);
-            cloneMaterials = GetMaterials(graphicsClone);
-        }
-        else
-        {
-            graphicsClone.SetActive(true);
-        }
-    }
-
     public override void IgnoreCollision(Collider other, bool ignore)
     {
         Physics.IgnoreCollision(GetComponent<CharacterController>(), other, ignore);
