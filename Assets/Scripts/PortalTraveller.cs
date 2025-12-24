@@ -86,7 +86,7 @@ public class PortalTraveller : MonoBehaviour
                 materials.Add(mat);
             }
         }
-        return  materials.ToArray();
+        return materials.ToArray();
     }
 }
 
