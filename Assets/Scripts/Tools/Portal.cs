@@ -28,7 +28,7 @@ public class Portal : MonoBehaviour
     public List<PortalTraveller> trackedTravellers;
     MeshFilter screenMeshFilter;
 
-    public static Portal SpawnPortal(GameObject portalPrefab, Portal linkedPortal, RaycastHit hit, Transform camT, bool isSecondPortal)
+    public static Portal SpawnPortal(GameObject portalPrefab, Portal linkedPortal, RaycastHit hit, Transform eyeT, bool isSecondPortal)
     {
         Portal newPortal = Instantiate(portalPrefab).GetComponent<Portal>();
         if (linkedPortal)
@@ -36,7 +36,7 @@ public class Portal : MonoBehaviour
             newPortal.linkedPortal = linkedPortal;
             newPortal.linkedPortal.linkedPortal = newPortal;
         }
-        newPortal.transform.SetPositionAndRotation(hit.point + hit.normal * spawnOffset, Quaternion.LookRotation(hit.normal, camT ? camT.up : Vector3.up));
+        newPortal.transform.SetPositionAndRotation(hit.point + hit.normal * spawnOffset, Quaternion.LookRotation(hit.normal, (Mathf.Abs(hit.normal.x) < 0.001f && Mathf.Abs(hit.normal.z) < 0.001f) ? eyeT.up : Vector3.up));
         newPortal.attachedSurface = hit.collider;
         newPortal.isSecondPortal = isSecondPortal;
         newPortal.UpdateFrameColor();
@@ -94,6 +94,7 @@ public class Portal : MonoBehaviour
                 traveller.IgnoreCollision(attachedSurface, false);
                 linkedPortal.OnTravellerEnter(traveller); // Notify the linked portal of the traveller's entry
                 trackedTravellers.RemoveAt(i);
+                linkedPortal.ProtectScreenFromClipping(playerCamera.transform.position);
             }
             else
             {
@@ -229,7 +230,7 @@ public class Portal : MonoBehaviour
             portalCamera.transform.SetPositionAndRotation(renderPositions[i], renderRotations[i]);
             SetNearClipPlane();
 
-            if (PlayerController.instance.isFPP && i == recursionLimit - 1)
+            if (i == recursionLimit - 1)
             {
                 portalCamera.cullingMask &= ~(1 << LayerMask.NameToLayer("FPPHidePortal"));
             }
@@ -276,23 +277,11 @@ public class Portal : MonoBehaviour
     float ProtectScreenFromClipping(Vector3 viewPoint)
     {
         Transform screenT = screen.transform;
-        Vector3 playerPosition = PlayerController.instance.transform.position;
-        bool camFacingSameDirAsPortal = Vector3.Dot(transform.forward, transform.position - playerPosition) > 0;
-
-        if (!trackedTravellers.Contains(PlayerController.instance.GetComponent<PortalTraveller>()))
-        {
-            // If player is not currently interacting with the portal, set default thickness
-            screenT.localScale = new Vector3(screenT.localScale.x, defaultScreenThickness, screenT.localScale.z);
-            screenT.localPosition = Vector3.forward * defaultScreenThickness * (camFacingSameDirAsPortal ? 1f : -1f);
-            return defaultScreenThickness;
-        }
-
-        Vector3 playerPositionAtViewPointHeight = new Vector3(playerPosition.x, viewPoint.y, playerPosition.z);
-        float nearClipPlaneDist = Vector3.Dot (transform.forward, viewPoint - playerPositionAtViewPointHeight);
+        bool camFacingSameDirAsPortal = Vector3.Dot(transform.forward, transform.position - viewPoint) > 0;
 
         float halfHeight = playerCamera.nearClipPlane * Mathf.Tan(playerCamera.fieldOfView * 0.5f * Mathf.Deg2Rad);
         float halfWidth = halfHeight * playerCamera.aspect;
-        float dstToNearClipPlaneCorner = new Vector3(halfWidth, halfHeight, nearClipPlaneDist).magnitude;
+        float dstToNearClipPlaneCorner = new Vector3(halfWidth, halfHeight, playerCamera.nearClipPlane).magnitude;
         float screenThickness = dstToNearClipPlaneCorner * 0.5f; // Cylinder height is 0.5 times this distance
 
         screenT.localScale = new Vector3(screenT.localScale.x, screenThickness, screenT.localScale.z);
@@ -309,8 +298,8 @@ public class Portal : MonoBehaviour
         Transform clipPlane = transform;
         int dot = System.Math.Sign(Vector3.Dot(clipPlane.forward, transform.position - portalCamera.transform.position));
 
-        Vector3 camSpacePos = portalCamera.worldToCameraMatrix.MultiplyPoint (clipPlane.position);
-        Vector3 camSpaceNormal = portalCamera.worldToCameraMatrix.MultiplyVector (clipPlane.forward) * dot;
+        Vector3 camSpacePos = portalCamera.worldToCameraMatrix.MultiplyPoint(clipPlane.position);
+        Vector3 camSpaceNormal = portalCamera.worldToCameraMatrix.MultiplyVector(clipPlane.forward) * dot;
         float camSpaceDst = -Vector3.Dot (camSpacePos, camSpaceNormal) + nearClipOffset;
 
         // Don't use oblique clip plane if very close to portal as it seems this can cause some visual artifacts

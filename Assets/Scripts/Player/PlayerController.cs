@@ -14,29 +14,34 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
     private float verticalVelocity;
     private Vector3 smoothV;
     private CharacterController characterController;
-    
+
     [Header("Camera")]
-    public bool isFPP = true;
-    public float eyeHeight = 0.375f;
-    public Vector3 cameraOffset;
-    public Transform cameraTransform;
+    public Transform eyeTransform;
+    public Vector3 eyeOffset = new Vector3(0f, 0.375f, 0f);
     public float mouseSensitivity = 100f;
-    public float minPitch = -89.9f;
-    public float maxPitch = 89.9f;
+    public float minPitch = -90f;
+    public float maxPitch = 90f;
     public float smoothRotationTime = 0.1f;
     public float pitch = 0f;
     public float yaw = 0f;
+    public float smoothAxisChangeTime = 0.2f;
+    public float smoothModelRotationTime = 0.25f;
     private Camera mainCamera;
     private float smoothPitch;
     private float smoothYaw;
     private float pitchSmoothV;
     private float yawSmoothV;
+    private Vector3 eyeSmoothPosV;
+    private float eyeSmoothRotV;
+    private Vector3 modelRotSmoothV;
 
     [Header("Shooting")]
     public GameObject portalPrefab;
     public float maxShootDistance = 100f;
     private bool isAimingLeft = false;
     private bool isAimingRight = false;
+
+    private bool layerMaskSwapped = false;
 
     private Portal portal1;
     private Portal portal2;
@@ -50,17 +55,15 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
             Debug.LogError("CharacterController component is missing on Player!");
         }
 
-        if (cameraTransform == null && mainCamera != null)
+        if (eyeTransform == null)
         {
-            cameraTransform = mainCamera.transform;
+            Debug.LogError("Eye Transform missing!");
         }
 
-        if (cameraTransform != null)
-        {
-            Vector3 angles = cameraTransform.eulerAngles;
-            yaw = angles.y;
-            pitch = angles.x;
-        }
+        eyeTransform.localPosition = eyeOffset;
+        Vector3 angles = eyeTransform.eulerAngles;
+        yaw = angles.y;
+        pitch = angles.x;
     }
 
     void Update()
@@ -79,7 +82,7 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
         if (grounded && verticalVelocity < 0f)
         {
             // Small negative value to keep the controller grounded
-            verticalVelocity = -2f;
+            verticalVelocity = -0.02f;
         }
 
         if (grounded && Input.GetButtonDown("Jump"))
@@ -98,7 +101,7 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
         float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity * Time.deltaTime;
         float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity * Time.deltaTime;
 
-        yaw += mouseX;
+        yaw = (yaw + mouseX) % 360f;
         pitch -= mouseY;
         pitch = Mathf.Clamp(pitch, minPitch, maxPitch);
 
@@ -107,39 +110,32 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
         
         transform.eulerAngles = Vector3.up * smoothYaw;
 
-        if (graphicsObject.transform != null)
+        if (graphicsObject)
         {
-            graphicsObject.transform.localRotation = Quaternion.Slerp(graphicsObject.transform.localRotation, Quaternion.Euler(0f, 0f, 0f), Time.deltaTime * 5f);
+            Vector3 modelRot = graphicsObject.transform.localEulerAngles;
+            modelRot.x = Mathf.SmoothDampAngle(modelRot.x, 0, ref modelRotSmoothV.x, smoothModelRotationTime);
+            modelRot.y = Mathf.SmoothDampAngle(modelRot.y, 0, ref modelRotSmoothV.y, smoothModelRotationTime);
+            modelRot.z = Mathf.SmoothDampAngle(modelRot.z, 0, ref modelRotSmoothV.z, smoothModelRotationTime);
+            graphicsObject.transform.localEulerAngles = modelRot;
         }
 
-        if (cameraTransform != null)
-        {
-            // If in first-person aiming, position camera at eye height
-            if (isFPP)
-            {
-                cameraTransform.position = transform.position + Vector3.up * eyeHeight;
-                cameraTransform.rotation = Quaternion.Euler(smoothPitch, smoothYaw, 0f);
-            }
-            else
-            {
-                // Third-person: Recompute camera position from stored offset using yaw/pitch
-                Quaternion rot = Quaternion.Euler(smoothPitch, smoothYaw, 0f);
-                cameraTransform.position = transform.position + rot * cameraOffset;
-                cameraTransform.LookAt(transform.position + Vector3.up);
-            }
-        }
+        eyeTransform.localPosition = Vector3.SmoothDamp(eyeTransform.localPosition, eyeOffset, ref eyeSmoothPosV, smoothAxisChangeTime);
+        
+        Vector3 eyeRot = eyeTransform.eulerAngles;
+        eyeRot.x = smoothPitch;
+        eyeRot.y = smoothYaw;
+        eyeRot.z = Mathf.SmoothDampAngle(eyeRot.z, 0, ref eyeSmoothRotV, smoothAxisChangeTime);
+        eyeTransform.eulerAngles = eyeRot;
 
         // Input: mouse down enters aiming; mouse up performs Raycast spawn
         // Start aiming on button down
         if (Input.GetMouseButtonDown(0))
         {
             isAimingLeft = true;
-            SwitchToFPP();
         }
         if (Input.GetMouseButtonDown(1))
         {
             isAimingRight = true;
-            SwitchToFPP();
         }
 
         // On button release, perform Raycast and spawn corresponding prefab
@@ -147,29 +143,17 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
         {
             PerformShoot(0);
             isAimingLeft = false;
-            // If no longer aiming with either button, switch back to third-person
-            if (!isAimingRight)
-            {
-                //SwitchToTPP();
-            }
         }
         if (Input.GetMouseButtonUp(1) && isAimingRight)
         {
             PerformShoot(1);
             isAimingRight = false;
-            // If no longer aiming with either button, switch back to third-person
-            if (!isAimingLeft)
-            {
-                //SwitchToTPP();
-            }
         }
     }
 
     private void PerformShoot(int button)
     {
-        if (cameraTransform == null) return;
-
-        Ray ray = new Ray(cameraTransform.position, cameraTransform.forward);
+        Ray ray = new Ray(eyeTransform.position, eyeTransform.forward);
         RaycastHit hit;
         int layerMask = ~(1 << LayerMask.NameToLayer("FPPHide") | 1 << LayerMask.NameToLayer("Portal")); // Ignore FPPHide layer
         if (Physics.Raycast(ray, out hit, maxShootDistance, layerMask))
@@ -186,7 +170,7 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
                 {
                     Destroy(portal1.gameObject);
                 }
-                portal1 = Portal.SpawnPortal(portalPrefab, portal2, hit, cameraTransform, false);
+                portal1 = Portal.SpawnPortal(portalPrefab, portal2, hit, eyeTransform, false);
             }
             else if (button == 1)
             {
@@ -194,40 +178,48 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
                 {
                     Destroy(portal2.gameObject);
                 }
-                portal2 = Portal.SpawnPortal(portalPrefab, portal1, hit, cameraTransform, true);
+                portal2 = Portal.SpawnPortal(portalPrefab, portal1, hit, eyeTransform, true);
             }
         }
     }
 
-    void SwitchToFPP()
+    public void SetLayerMask(bool swap)
     {
-        if (!isFPP)
+        if (swap == layerMaskSwapped) return;
+
+        layerMaskSwapped = swap;
+        if (swap)
         {
-            isFPP = true;
-            PlayerUIManager.instance.SetCrosshair(1);
-            if (cameraTransform != null)
+            graphicsObject.layer = LayerMask.NameToLayer("FPPHidePortal");
+            foreach (Transform child in graphicsObject.GetComponentsInChildren<Transform>())
             {
-                cameraTransform.position = transform.position + Vector3.up * eyeHeight;
-                cameraTransform.rotation = Quaternion.Euler(pitch, yaw, 0f);
-                mainCamera.cullingMask &= ~(1 << LayerMask.NameToLayer("FPPHide"));
+                child.gameObject.layer = LayerMask.NameToLayer("FPPHidePortal");
+            }
+
+            if (graphicsClone)
+            {
+                graphicsClone.layer = LayerMask.NameToLayer("FPPHide");
+                foreach (Transform child in graphicsClone.GetComponentsInChildren<Transform>())
+                {
+                    child.gameObject.layer = LayerMask.NameToLayer("FPPHide");
+                }
             }
         }
-        
-    }
-
-    void SwitchToTPP()
-    {
-        if (isFPP)
+        else
         {
-            isFPP = false;
-            PlayerUIManager.instance.SetCrosshair(0);
-            // When switching back, immediately reposition camera based on current yaw/pitch
-            if (cameraTransform != null)
+            graphicsObject.layer = LayerMask.NameToLayer("FPPHide");
+            foreach (Transform child in graphicsObject.GetComponentsInChildren<Transform>())
             {
-                Quaternion rot = Quaternion.Euler(pitch, yaw, 0f);
-                cameraTransform.position = transform.position + rot * cameraOffset;
-                cameraTransform.LookAt(transform.position + Vector3.up);
-                mainCamera.cullingMask |= 1 << LayerMask.NameToLayer("FPPHide");
+                child.gameObject.layer = LayerMask.NameToLayer("FPPHide");
+            }
+
+            if (graphicsClone)
+            {
+                graphicsClone.layer = LayerMask.NameToLayer("FPPHidePortal");
+                foreach (Transform child in graphicsClone.GetComponentsInChildren<Transform>())
+                {
+                    child.gameObject.layer = LayerMask.NameToLayer("FPPHidePortal");
+                }
             }
         }
     }
@@ -268,24 +260,32 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
 
     public override void Teleport(Transform fromPortal, Transform toPortal, Vector3 pos, Quaternion rot)
     {
-        // Directly set position and rotation
-        transform.position = pos;
 
         Matrix4x4 teleportMatrix = toPortal.localToWorldMatrix * Matrix4x4.Rotate(Quaternion.Euler(0f, 180f, 0f)) * fromPortal.worldToLocalMatrix;
 
-        Matrix4x4 m = teleportMatrix * cameraTransform.localToWorldMatrix;
-        Quaternion rotation = m.rotation;
-        Vector3 eular = rotation.eulerAngles;
-        float deltaPitch = Mathf.DeltaAngle(smoothPitch, eular.x);
-        float deltaYaw = Mathf.DeltaAngle(smoothYaw, eular.y);
+        Matrix4x4 eyeM = teleportMatrix * eyeTransform.localToWorldMatrix;
+        Quaternion graphicsRotation = (teleportMatrix * graphicsObject.transform.localToWorldMatrix).rotation;
+
+        transform.position = pos;
+
+        eyeTransform.position = eyeM.GetPosition();
+
+        Vector3 euler = eyeM.rotation.eulerAngles;
+        float deltaPitch = Mathf.DeltaAngle(smoothPitch, euler.x);
+        float deltaYaw = Mathf.DeltaAngle(smoothYaw, euler.y);
         pitch += deltaPitch;
-        pitch = Mathf.Clamp(pitch, minPitch, maxPitch);
+        pitch = Mathf.Clamp(180f - (180f - pitch) % 360f, minPitch, maxPitch);
         smoothPitch += deltaPitch;
         yaw += deltaYaw;
         smoothYaw += deltaYaw;
         transform.eulerAngles = Vector3.up * smoothYaw;
+
+        eyeTransform.rotation = eyeM.rotation;
+
+        graphicsObject.transform.rotation = graphicsRotation;
+
         velocity = toPortal.TransformVector(Matrix4x4.Rotate(Quaternion.Euler(0f, 180f, 0f)).MultiplyVector(fromPortal.InverseTransformVector(velocity)));
-        graphicsObject.transform.rotation = (teleportMatrix * graphicsObject.transform.localToWorldMatrix).rotation;
+
         Physics.SyncTransforms(); // Ensure physics is updated after teleportation
     }
 }

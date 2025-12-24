@@ -257,7 +257,7 @@ Camera:
   m_Depth: -1
   m_CullingMask:
     serializedVersion: 2
-    m_Bits: 375
+    m_Bits: 887
   m_RenderingPath: -1
   m_TargetTexture: {fileID: 0}
   m_TargetDisplay: 0
@@ -278,11 +278,11 @@ Transform:
   m_GameObject: {fileID: 330585543}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.37199998, z: 0}
-  m_LocalScale: {x: 0.6948, y: 0.28488, z: 0.41219997}
+  m_LocalPosition: {x: 554.619, y: 1.0976, z: 299.185}
+  m_LocalScale: {x: 0.55584, y: 0.227904, z: 0.32976}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 1021661229}
+  m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &330585547
 MonoBehaviour:
@@ -904,21 +904,21 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   graphicsObject: {fileID: 1788874991}
-  walkSpeed: 5
-  runSpeed: 10
+  walkSpeed: 4
+  runSpeed: 8
   smoothMoveTime: 0.1
   gravity: -9.81
   jumpHeight: 1.5
-  isFPP: 1
-  eyeHeight: 0.375
-  cameraOffset: {x: 0, y: 0, z: -3}
-  cameraTransform: {fileID: 330585546}
+  eyeTransform: {fileID: 1744831609}
+  eyeOffset: {x: 0, y: 0.375, z: 0}
   mouseSensitivity: 500
   minPitch: -90
   maxPitch: 90
   smoothRotationTime: 0.1
   pitch: 0
   yaw: 0
+  smoothAxisChangeTime: 0.2
+  smoothModelRotationTime: 0.25
   portalPrefab: {fileID: 3156081837618832756, guid: d0799209de2c12e4e8421958aa7229ae,
     type: 3}
   maxShootDistance: 100
@@ -969,7 +969,7 @@ Transform:
   m_LocalScale: {x: 0.8, y: 0.8, z: 0.8}
   m_ConstrainProportionsScale: 1
   m_Children:
-  - {fileID: 330585546}
+  - {fileID: 1744831609}
   - {fileID: 1788874995}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -1302,6 +1302,37 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   crosshair: {fileID: 817077108}
+--- !u!1 &1744831608
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1744831609}
+  m_Layer: 0
+  m_Name: Eye Anchor
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1744831609
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1744831608}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1021661229}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1762280581
 GameObject:
   m_ObjectHideFlags: 0
@@ -6526,6 +6557,7 @@ SceneRoots:
   - {fileID: 410087041}
   - {fileID: 832575519}
   - {fileID: 1762280584}
+  - {fileID: 330585546}
   - {fileID: 1021661229}
   - {fileID: 1706251943}
   - {fileID: 773215364}
