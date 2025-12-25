@@ -25,7 +25,7 @@ public class Portal : MonoBehaviour
     RenderTexture viewTexture;
     Camera portalCamera;
     Camera playerCamera;
-    public List<PortalTraveller> trackedTravellers;
+    List<PortalTraveller> trackedTravellers;
     MeshFilter screenMeshFilter;
 
     public static Portal SpawnPortal(GameObject portalPrefab, Portal linkedPortal, RaycastHit hit, Transform eyeT, bool isSecondPortal)

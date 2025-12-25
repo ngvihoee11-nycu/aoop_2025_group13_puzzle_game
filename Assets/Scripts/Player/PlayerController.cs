@@ -90,11 +90,11 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
         if (grounded && customGrounded)
         {
             Vector3 inputVelocity = worldInputDir * movingSpeed;
-            float verticalVelocity = 0;
+            float verticalVelocity = velocity.y;
             // Small negative value to keep the controller grounded
             if (velocity.y < 0f)
             {
-                verticalVelocity = -0.05f;
+                verticalVelocity = -0.2f;
             }
             // v = sqrt(2 * g * h) but gravity is negative so use -2 * gravity
             if (Input.GetButtonDown("Jump"))
@@ -184,6 +184,14 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
         {
             PerformShoot(1);
             isAimingRight = false;
+        }
+    }
+
+    void OnControllerColliderHit(ControllerColliderHit hit)
+    {
+        if (Vector3.Distance(hit.normal, Vector3.up) >= 0.01f && Vector3.Dot(velocity, hit.normal) < 0f)
+        {
+            velocity -= Vector3.Dot(velocity, hit.normal) * hit.normal;
         }
     }
 
@@ -325,8 +333,9 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
 
         velocity = toPortal.TransformVector(Matrix4x4.Rotate(Quaternion.Euler(0f, 180f, 0f)).MultiplyVector(fromPortal.InverseTransformVector(velocity)));
 
-        if (Vector3.Distance(toPortal.forward, Vector3.up) < 0.1f || Vector3.Distance(toPortal.forward, Vector3.down) < 0.1f)
+        if (Vector3.Distance(toPortal.forward, Vector3.up) < 0.1f)
         {
+            velocity.y = Mathf.Max(velocity.y, -0.4f * gravity);
             customGrounded = false;
         }
 
