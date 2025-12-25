@@ -55,6 +55,17 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
             Debug.LogError("CharacterController component is missing on Player!");
         }
 
+        if (graphicsObject == null)
+        {
+            Debug.LogError("Graphics object is missing on player!");
+        }
+
+        graphicsObject.layer = LayerMask.NameToLayer("FPPHide");
+        foreach (Transform child in graphicsObject.GetComponentsInChildren<Transform>())
+        {
+            child.gameObject.layer = LayerMask.NameToLayer("FPPHide");
+        }
+
         if (eyeTransform == null)
         {
             Debug.LogError("Eye Transform missing!");
@@ -231,9 +242,10 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
             graphicsClone = Instantiate(graphicsObject);
             graphicsClone.transform.parent = graphicsObject.transform.parent;
             graphicsClone.transform.localScale = graphicsObject.transform.localScale;
+            
+            layerMaskSwapped = false;
             graphicsClone.layer = LayerMask.NameToLayer("FPPHidePortal");
-
-            foreach (Transform child in graphicsClone.transform)
+            foreach (Transform child in graphicsClone.GetComponentsInChildren<Transform>())
             {
                 child.gameObject.layer = LayerMask.NameToLayer("FPPHidePortal");
             }
