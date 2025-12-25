@@ -3,16 +3,16 @@ using UnityEngine;
 public class PlayerController : PortalTravellerSingleton<PlayerController>
 {
     [Header("Movement")]
-    public float walkSpeed = 5f;
-    public float runSpeed = 10f;
-    public float smoothMoveTime = 0.1f;
-
-    [Header("Physics")]
+    public float walkSpeed = 4f;
+    public float runSpeed = 8f;
+    public float airSpeed = 2f;
     public float gravity = -9.81f;
     public float jumpHeight = 1.5f;
-    private Vector3 velocity;
-    private float verticalVelocity;
+    public float smoothMoveTime = 0.1f;
+    public float airDampTime = 1f;
+    private bool customGrounded = true;
     private Vector3 smoothV;
+    private Vector3 velocity;
     private CharacterController characterController;
 
     [Header("Camera")]
@@ -33,7 +33,7 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
     private float yawSmoothV;
     private Vector3 eyeSmoothPosV;
     private float eyeSmoothRotV;
-    private Vector3 modelRotSmoothV;
+    private Vector3 modelSmoothRotV;
 
     [Header("Shooting")]
     public GameObject portalPrefab;
@@ -79,34 +79,59 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
 
     void Update()
     {
+        bool grounded = characterController.isGrounded;
+
         Vector2 input = new Vector2(Input.GetAxis("Horizontal"), Input.GetAxis("Vertical"));
         Vector3 inputDir = new Vector3(input.x, 0, input.y).normalized;
         Vector3 worldInputDir = transform.TransformDirection(inputDir);
-        
-        float targetSpeed = Input.GetKey(KeyCode.LeftShift) ? runSpeed : walkSpeed;
-        Vector3 targetVelocity = worldInputDir * targetSpeed;
-        velocity = Vector3.SmoothDamp(velocity, targetVelocity, ref smoothV, smoothMoveTime);
-        
 
-        // Apply gravity and jumping
-        bool grounded = characterController.isGrounded;
-        if (grounded && verticalVelocity < 0f)
+        float movingSpeed = Input.GetKey(KeyCode.LeftShift) ? runSpeed : walkSpeed;
+
+        if (grounded && customGrounded)
         {
+            Vector3 inputVelocity = worldInputDir * movingSpeed;
+            float verticalVelocity = 0;
             // Small negative value to keep the controller grounded
-            verticalVelocity = -0.02f;
-        }
-
-        if (grounded && Input.GetButtonDown("Jump"))
-        {
+            if (velocity.y < 0f)
+            {
+                verticalVelocity = -0.05f;
+            }
             // v = sqrt(2 * g * h) but gravity is negative so use -2 * gravity
-            verticalVelocity = Mathf.Sqrt(jumpHeight * -2f * gravity);
+            if (Input.GetButtonDown("Jump"))
+            {
+                verticalVelocity = Mathf.Sqrt(jumpHeight * -2f * gravity);
+            }
+            velocity = Vector3.SmoothDamp(velocity, inputVelocity, ref smoothV, smoothMoveTime);
+            velocity.y = verticalVelocity;
+        }
+        else
+        {
+            Vector3 inputVelocity = worldInputDir * airSpeed;
+            velocity.y += gravity * Time.deltaTime;
+            velocity.y = Mathf.SmoothDamp(velocity.y, 0f, ref smoothV.y, airDampTime);
+
+            if (inputVelocity.x != 0 && (Mathf.Sign(inputVelocity.x) != Mathf.Sign(velocity.x) || Mathf.Abs(inputVelocity.x) > Mathf.Abs(velocity.x)))
+            {
+                velocity.x = Mathf.SmoothDamp(velocity.x, inputVelocity.x, ref smoothV.x, smoothMoveTime);
+            }
+            else
+            {
+                velocity.x = Mathf.SmoothDamp(velocity.x, inputVelocity.x, ref smoothV.x, airDampTime);
+            }
+
+            if (inputVelocity.z != 0 && (Mathf.Sign(inputVelocity.z) != Mathf.Sign(velocity.z) || Mathf.Abs(inputVelocity.z) > Mathf.Abs(velocity.z)))
+            {
+                velocity.z = Mathf.SmoothDamp(velocity.z, inputVelocity.z, ref smoothV.z, smoothMoveTime);
+            }
+            else
+            {
+                velocity.z = Mathf.SmoothDamp(velocity.z, inputVelocity.z, ref smoothV.z, airDampTime);   
+            }
         }
 
-        // Integrate gravity
-        verticalVelocity += gravity * Time.deltaTime;
-
-        velocity.y = verticalVelocity;
         characterController.Move(velocity * Time.deltaTime);
+
+        customGrounded = characterController.isGrounded;
 
         // Handle Camera Rotation (mouse look)
         float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity * Time.deltaTime;
@@ -124,9 +149,9 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
         if (graphicsObject)
         {
             Vector3 modelRot = graphicsObject.transform.localEulerAngles;
-            modelRot.x = Mathf.SmoothDampAngle(modelRot.x, 0, ref modelRotSmoothV.x, smoothModelRotationTime);
-            modelRot.y = Mathf.SmoothDampAngle(modelRot.y, 0, ref modelRotSmoothV.y, smoothModelRotationTime);
-            modelRot.z = Mathf.SmoothDampAngle(modelRot.z, 0, ref modelRotSmoothV.z, smoothModelRotationTime);
+            modelRot.x = Mathf.SmoothDampAngle(modelRot.x, 0, ref modelSmoothRotV.x, smoothModelRotationTime);
+            modelRot.y = Mathf.SmoothDampAngle(modelRot.y, 0, ref modelSmoothRotV.y, smoothModelRotationTime);
+            modelRot.z = Mathf.SmoothDampAngle(modelRot.z, 0, ref modelSmoothRotV.z, smoothModelRotationTime);
             graphicsObject.transform.localEulerAngles = modelRot;
         }
 
@@ -266,8 +291,9 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
 
     public override void AdjustClone(Transform fromPortal, Transform toPortal, Vector3 pos, Quaternion rot)
     {
-        graphicsClone.transform.position = pos;
-        graphicsClone.transform.rotation = (toPortal.localToWorldMatrix * Matrix4x4.Rotate(Quaternion.Euler(0f, 180f, 0f)) * fromPortal.worldToLocalMatrix * graphicsObject.transform.localToWorldMatrix).rotation;
+        Matrix4x4 modelM = toPortal.localToWorldMatrix * Matrix4x4.Rotate(Quaternion.Euler(0f, 180f, 0f)) * fromPortal.worldToLocalMatrix * graphicsObject.transform.localToWorldMatrix;
+        graphicsClone.transform.position = modelM.GetPosition();
+        graphicsClone.transform.rotation = modelM.rotation;
     }
 
     public override void Teleport(Transform fromPortal, Transform toPortal, Vector3 pos, Quaternion rot)
@@ -276,7 +302,7 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
         Matrix4x4 teleportMatrix = toPortal.localToWorldMatrix * Matrix4x4.Rotate(Quaternion.Euler(0f, 180f, 0f)) * fromPortal.worldToLocalMatrix;
 
         Matrix4x4 eyeM = teleportMatrix * eyeTransform.localToWorldMatrix;
-        Quaternion graphicsRotation = (teleportMatrix * graphicsObject.transform.localToWorldMatrix).rotation;
+        Matrix4x4 modelM = teleportMatrix * graphicsObject.transform.localToWorldMatrix;
 
         transform.position = pos;
 
@@ -294,9 +320,15 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
 
         eyeTransform.rotation = eyeM.rotation;
 
-        graphicsObject.transform.rotation = graphicsRotation;
+        graphicsObject.transform.position = modelM.GetPosition();
+        graphicsObject.transform.rotation = modelM.rotation;
 
         velocity = toPortal.TransformVector(Matrix4x4.Rotate(Quaternion.Euler(0f, 180f, 0f)).MultiplyVector(fromPortal.InverseTransformVector(velocity)));
+
+        if (Vector3.Distance(toPortal.forward, Vector3.up) < 0.1f || Vector3.Distance(toPortal.forward, Vector3.down) < 0.1f)
+        {
+            customGrounded = false;
+        }
 
         Physics.SyncTransforms(); // Ensure physics is updated after teleportation
     }

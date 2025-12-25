@@ -90,7 +90,7 @@ public class Portal : MonoBehaviour
                 var rotOld = traveller.transform.rotation;
                 // Teleport the traveller to the linked portal
                 traveller.Teleport(transform, linkedPortal.transform, m.GetPosition(), m.rotation);
-                traveller.AdjustClone(transform, linkedPortal.transform, positionOld, rotOld);
+                traveller.AdjustClone(linkedPortal.transform, transform, positionOld, rotOld);
                 traveller.IgnoreCollision(attachedSurface, false);
                 linkedPortal.OnTravellerEnter(traveller); // Notify the linked portal of the traveller's entry
                 trackedTravellers.RemoveAt(i);
