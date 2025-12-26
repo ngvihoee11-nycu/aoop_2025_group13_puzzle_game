@@ -62,7 +62,7 @@ public class LaserEmitter : MonoBehaviour
         RaycastHit hit;
         float laserLength = defaultLength;
         int mask = ~LayerMask.GetMask("Laser Emitter", "Ignore Raycast");
-        if (Physics.Raycast(transform.position, transform.forward, out hit, Mathf.Infinity, mask))
+        if (Physics.Raycast(transform.position, transform.forward, out hit, Mathf.Infinity, mask, QueryTriggerInteraction.Ignore))
         {
             laserLength = hit.distance;
         }

@@ -232,7 +232,7 @@ public class Portal : MonoBehaviour
 
             if (i == recursionLimit - 1)
             {
-                portalCamera.cullingMask &= ~(1 << LayerMask.NameToLayer("FPPHidePortal"));
+                portalCamera.cullingMask &= ~(1 << LayerMask.NameToLayer("Clone Traveller"));
             }
 
             // Warning says RenderSingleCamera is obsolete, but the alternative is broken in current version
@@ -269,8 +269,8 @@ public class Portal : MonoBehaviour
             }
             viewTexture = new RenderTexture(Screen.width, Screen.height, 0);
             portalCamera.targetTexture = viewTexture;
-            linkedPortal.screen.material.SetTexture("_MainTex", viewTexture);
         }
+        linkedPortal.screen.material.SetTexture("_MainTex", viewTexture);
     }
 
     // Sets the thickness of the portal screen so as not to clip with camera near plane when player goes through

@@ -12,7 +12,7 @@ public class MainCamera : Singleton<MainCamera> {
 
         mainCamera = GetComponent<Camera> ();
         mainCamera.cullingMask = -1;
-        mainCamera.cullingMask &= ~(1 << LayerMask.NameToLayer("FPPHide"));
+        mainCamera.cullingMask &= ~(1 << LayerMask.NameToLayer("Portal Traveller"));
 
         portals = new List<Portal>(FindObjectsOfType<Portal>());
 

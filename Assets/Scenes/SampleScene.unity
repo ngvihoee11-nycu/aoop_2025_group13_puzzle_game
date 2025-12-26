@@ -906,12 +906,15 @@ MonoBehaviour:
   graphicsObject: {fileID: 1788874991}
   walkSpeed: 4
   runSpeed: 8
-  smoothMoveTime: 0.1
+  airSpeed: 2
   gravity: -9.81
-  jumpHeight: 1.5
+  jumpHeight: 1
+  smoothMoveTime: 0.1
+  airDampTime: 1
+  lockCursor: 0
   eyeTransform: {fileID: 1744831609}
   eyeOffset: {x: 0, y: 0.375, z: 0}
-  mouseSensitivity: 500
+  mouseSensitivity: 1000
   minPitch: -90
   maxPitch: 90
   smoothRotationTime: 0.1
@@ -981,6 +984,21 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 665913232499495643, guid: d0799209de2c12e4e8421958aa7229ae,
+        type: 3}
+      propertyPath: m_Layer
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1966875496906161425, guid: d0799209de2c12e4e8421958aa7229ae,
+        type: 3}
+      propertyPath: m_Layer
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2404235799692161852, guid: d0799209de2c12e4e8421958aa7229ae,
+        type: 3}
+      propertyPath: m_Layer
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 2912585911831322444, guid: d0799209de2c12e4e8421958aa7229ae,
         type: 3}
       propertyPath: m_LocalPosition.x
@@ -1031,10 +1049,20 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 3142154756858191352, guid: d0799209de2c12e4e8421958aa7229ae,
+        type: 3}
+      propertyPath: m_Layer
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 3156081837618832756, guid: d0799209de2c12e4e8421958aa7229ae,
         type: 3}
       propertyPath: m_Name
       value: Portal
+      objectReference: {fileID: 0}
+    - target: {fileID: 3156081837618832756, guid: d0799209de2c12e4e8421958aa7229ae,
+        type: 3}
+      propertyPath: m_Layer
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3950520709541869664, guid: d0799209de2c12e4e8421958aa7229ae,
         type: 3}
@@ -1059,6 +1087,11 @@ PrefabInstance:
     - target: {fileID: 7464172698200867231, guid: d0799209de2c12e4e8421958aa7229ae,
         type: 3}
       propertyPath: m_BackGroundColor.r
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9004466055258326820, guid: d0799209de2c12e4e8421958aa7229ae,
+        type: 3}
+      propertyPath: m_Layer
       value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []

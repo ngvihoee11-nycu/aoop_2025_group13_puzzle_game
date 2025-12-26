@@ -16,6 +16,7 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
     private CharacterController characterController;
 
     [Header("Camera")]
+    public bool lockCursor;
     public Transform eyeTransform;
     public Vector3 eyeOffset = new Vector3(0f, 0.375f, 0f);
     public float mouseSensitivity = 100f;
@@ -48,6 +49,12 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
 
     void Start()
     {
+        if (lockCursor)
+        {
+            Cursor.lockState = CursorLockMode.Locked;
+            Cursor.visible = false;
+        }
+
         mainCamera = MainCamera.instance.GetCamera();
         characterController = GetComponent<CharacterController>();
         if (characterController == null)
@@ -60,10 +67,10 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
             Debug.LogError("Graphics object is missing on player!");
         }
 
-        graphicsObject.layer = LayerMask.NameToLayer("FPPHide");
+        graphicsObject.layer = LayerMask.NameToLayer("Portal Traveller");
         foreach (Transform child in graphicsObject.GetComponentsInChildren<Transform>())
         {
-            child.gameObject.layer = LayerMask.NameToLayer("FPPHide");
+            child.gameObject.layer = LayerMask.NameToLayer("Portal Traveller");
         }
 
         if (eyeTransform == null)
@@ -79,6 +86,21 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
 
     void Update()
     {
+        if ((lockCursor && Input.GetKeyDown(KeyCode.Tab)) || (!lockCursor && Input.GetMouseButtonUp(0)))
+        {
+            lockCursor = !lockCursor;
+            if (lockCursor)
+            {
+                Cursor.lockState = CursorLockMode.Locked;
+                Cursor.visible = false;
+            }
+            else
+            {
+                Cursor.lockState = CursorLockMode.None;
+                Cursor.visible = true;
+            }
+        }
+
         bool grounded = characterController.isGrounded;
 
         Vector2 input = new Vector2(Input.GetAxis("Horizontal"), Input.GetAxis("Vertical"));
@@ -133,13 +155,16 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
 
         customGrounded = characterController.isGrounded;
 
-        // Handle Camera Rotation (mouse look)
-        float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity * Time.deltaTime;
-        float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity * Time.deltaTime;
+        if (lockCursor)
+        {
+            // Handle Camera Rotation (mouse look)
+            float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity * Time.deltaTime;
+            float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity * Time.deltaTime;
 
-        yaw = (yaw + mouseX) % 360f;
-        pitch -= mouseY;
-        pitch = Mathf.Clamp(pitch, minPitch, maxPitch);
+            yaw = (yaw + mouseX) % 360f;
+            pitch -= mouseY;
+            pitch = Mathf.Clamp(pitch, minPitch, maxPitch);
+        }
 
         smoothPitch = Mathf.SmoothDampAngle(smoothPitch, pitch, ref pitchSmoothV, smoothRotationTime);
         smoothYaw = Mathf.SmoothDampAngle(smoothYaw, yaw, ref yawSmoothV, smoothRotationTime);
@@ -163,27 +188,30 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
         eyeRot.z = Mathf.SmoothDampAngle(eyeRot.z, 0, ref eyeSmoothRotV, smoothAxisChangeTime);
         eyeTransform.eulerAngles = eyeRot;
 
-        // Input: mouse down enters aiming; mouse up performs Raycast spawn
-        // Start aiming on button down
-        if (Input.GetMouseButtonDown(0))
+        if (lockCursor)
         {
-            isAimingLeft = true;
-        }
-        if (Input.GetMouseButtonDown(1))
-        {
-            isAimingRight = true;
-        }
+            // Input: mouse down enters aiming; mouse up performs Raycast spawn
+            // Start aiming on button down
+            if (Input.GetMouseButtonDown(0))
+            {
+                isAimingLeft = true;
+            }
+            if (Input.GetMouseButtonDown(1))
+            {
+                isAimingRight = true;
+            }
 
-        // On button release, perform Raycast and spawn corresponding prefab
-        if (Input.GetMouseButtonUp(0) && isAimingLeft)
-        {
-            PerformShoot(0);
-            isAimingLeft = false;
-        }
-        if (Input.GetMouseButtonUp(1) && isAimingRight)
-        {
-            PerformShoot(1);
-            isAimingRight = false;
+            // On button release, perform Raycast and spawn corresponding prefab
+            if (Input.GetMouseButtonUp(0) && isAimingLeft)
+            {
+                PerformShoot(0);
+                isAimingLeft = false;
+            }
+            if (Input.GetMouseButtonUp(1) && isAimingRight)
+            {
+                PerformShoot(1);
+                isAimingRight = false;
+            }
         }
     }
 
@@ -199,8 +227,8 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
     {
         Ray ray = new Ray(eyeTransform.position, eyeTransform.forward);
         RaycastHit hit;
-        int layerMask = ~(1 << LayerMask.NameToLayer("FPPHide") | 1 << LayerMask.NameToLayer("Portal")); // Ignore FPPHide layer
-        if (Physics.Raycast(ray, out hit, maxShootDistance, layerMask))
+        int layerMask = ~(1 << LayerMask.NameToLayer("Portal Traveller")); // Ignore Portal Traveller layer
+        if (Physics.Raycast(ray, out hit, maxShootDistance, layerMask, QueryTriggerInteraction.Ignore))
         {
             if (portalPrefab == null)
             {
@@ -234,35 +262,35 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
         layerMaskSwapped = swap;
         if (swap)
         {
-            graphicsObject.layer = LayerMask.NameToLayer("FPPHidePortal");
+            graphicsObject.layer = LayerMask.NameToLayer("Clone Traveller");
             foreach (Transform child in graphicsObject.GetComponentsInChildren<Transform>())
             {
-                child.gameObject.layer = LayerMask.NameToLayer("FPPHidePortal");
+                child.gameObject.layer = LayerMask.NameToLayer("Clone Traveller");
             }
 
             if (graphicsClone)
             {
-                graphicsClone.layer = LayerMask.NameToLayer("FPPHide");
+                graphicsClone.layer = LayerMask.NameToLayer("Portal Traveller");
                 foreach (Transform child in graphicsClone.GetComponentsInChildren<Transform>())
                 {
-                    child.gameObject.layer = LayerMask.NameToLayer("FPPHide");
+                    child.gameObject.layer = LayerMask.NameToLayer("Portal Traveller");
                 }
             }
         }
         else
         {
-            graphicsObject.layer = LayerMask.NameToLayer("FPPHide");
+            graphicsObject.layer = LayerMask.NameToLayer("Portal Traveller");
             foreach (Transform child in graphicsObject.GetComponentsInChildren<Transform>())
             {
-                child.gameObject.layer = LayerMask.NameToLayer("FPPHide");
+                child.gameObject.layer = LayerMask.NameToLayer("Portal Traveller");
             }
 
             if (graphicsClone)
             {
-                graphicsClone.layer = LayerMask.NameToLayer("FPPHidePortal");
+                graphicsClone.layer = LayerMask.NameToLayer("Clone Traveller");
                 foreach (Transform child in graphicsClone.GetComponentsInChildren<Transform>())
                 {
-                    child.gameObject.layer = LayerMask.NameToLayer("FPPHidePortal");
+                    child.gameObject.layer = LayerMask.NameToLayer("Clone Traveller");
                 }
             }
         }
@@ -277,10 +305,10 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
             graphicsClone.transform.localScale = graphicsObject.transform.localScale;
             
             layerMaskSwapped = false;
-            graphicsClone.layer = LayerMask.NameToLayer("FPPHidePortal");
+            graphicsClone.layer = LayerMask.NameToLayer("Clone Traveller");
             foreach (Transform child in graphicsClone.GetComponentsInChildren<Transform>())
             {
-                child.gameObject.layer = LayerMask.NameToLayer("FPPHidePortal");
+                child.gameObject.layer = LayerMask.NameToLayer("Clone Traveller");
             }
 
             originalMaterials = GetMaterials(graphicsObject);
