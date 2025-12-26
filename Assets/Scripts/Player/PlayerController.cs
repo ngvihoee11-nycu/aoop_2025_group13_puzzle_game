@@ -103,7 +103,14 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
 
         bool grounded = characterController.isGrounded;
 
-        Vector2 input = new Vector2(Input.GetAxis("Horizontal"), Input.GetAxis("Vertical"));
+        Vector2 input = new Vector2(0f, 0f);
+
+        if (lockCursor)
+        {
+            input.x = Input.GetAxis("Horizontal");
+            input.y = Input.GetAxis("Vertical");
+        }
+
         Vector3 inputDir = new Vector3(input.x, 0, input.y).normalized;
         Vector3 worldInputDir = transform.TransformDirection(inputDir);
 
@@ -119,7 +126,7 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
                 verticalVelocity = -0.2f;
             }
             // v = sqrt(2 * g * h) but gravity is negative so use -2 * gravity
-            if (Input.GetButtonDown("Jump"))
+            if (lockCursor && Input.GetButtonDown("Jump"))
             {
                 verticalVelocity = Mathf.Sqrt(jumpHeight * -2f * gravity);
             }
