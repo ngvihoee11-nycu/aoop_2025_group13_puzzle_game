@@ -67,10 +67,10 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
             Debug.LogError("Graphics object is missing on player!");
         }
 
-        graphicsObject.layer = LayerMask.NameToLayer("Portal Traveller");
+        graphicsObject.layer = LayerMask.NameToLayer("Player");
         foreach (Transform child in graphicsObject.GetComponentsInChildren<Transform>())
         {
-            child.gameObject.layer = LayerMask.NameToLayer("Portal Traveller");
+            child.gameObject.layer = LayerMask.NameToLayer("Player");
         }
 
         if (eyeTransform == null)
@@ -227,7 +227,7 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
     {
         Ray ray = new Ray(eyeTransform.position, eyeTransform.forward);
         RaycastHit hit;
-        int layerMask = ~(1 << LayerMask.NameToLayer("Portal Traveller")); // Ignore Portal Traveller layer
+        int layerMask = ~LayerMask.GetMask("Player", "Portal"); // Ignore Portal Traveller layer
         if (Physics.Raycast(ray, out hit, maxShootDistance, layerMask, QueryTriggerInteraction.Ignore))
         {
             if (portalPrefab == null)
@@ -262,35 +262,35 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
         layerMaskSwapped = swap;
         if (swap)
         {
-            graphicsObject.layer = LayerMask.NameToLayer("Clone Traveller");
+            graphicsObject.layer = LayerMask.NameToLayer("Clone Player");
             foreach (Transform child in graphicsObject.GetComponentsInChildren<Transform>())
             {
-                child.gameObject.layer = LayerMask.NameToLayer("Clone Traveller");
+                child.gameObject.layer = LayerMask.NameToLayer("Clone Player");
             }
 
             if (graphicsClone)
             {
-                graphicsClone.layer = LayerMask.NameToLayer("Portal Traveller");
+                graphicsClone.layer = LayerMask.NameToLayer("Player");
                 foreach (Transform child in graphicsClone.GetComponentsInChildren<Transform>())
                 {
-                    child.gameObject.layer = LayerMask.NameToLayer("Portal Traveller");
+                    child.gameObject.layer = LayerMask.NameToLayer("Player");
                 }
             }
         }
         else
         {
-            graphicsObject.layer = LayerMask.NameToLayer("Portal Traveller");
+            graphicsObject.layer = LayerMask.NameToLayer("Player");
             foreach (Transform child in graphicsObject.GetComponentsInChildren<Transform>())
             {
-                child.gameObject.layer = LayerMask.NameToLayer("Portal Traveller");
+                child.gameObject.layer = LayerMask.NameToLayer("Player");
             }
 
             if (graphicsClone)
             {
-                graphicsClone.layer = LayerMask.NameToLayer("Clone Traveller");
+                graphicsClone.layer = LayerMask.NameToLayer("Clone Player");
                 foreach (Transform child in graphicsClone.GetComponentsInChildren<Transform>())
                 {
-                    child.gameObject.layer = LayerMask.NameToLayer("Clone Traveller");
+                    child.gameObject.layer = LayerMask.NameToLayer("Clone Player");
                 }
             }
         }
@@ -305,10 +305,10 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
             graphicsClone.transform.localScale = graphicsObject.transform.localScale;
             
             layerMaskSwapped = false;
-            graphicsClone.layer = LayerMask.NameToLayer("Clone Traveller");
+            graphicsClone.layer = LayerMask.NameToLayer("Clone Player");
             foreach (Transform child in graphicsClone.GetComponentsInChildren<Transform>())
             {
-                child.gameObject.layer = LayerMask.NameToLayer("Clone Traveller");
+                child.gameObject.layer = LayerMask.NameToLayer("Clone Player");
             }
 
             originalMaterials = GetMaterials(graphicsObject);

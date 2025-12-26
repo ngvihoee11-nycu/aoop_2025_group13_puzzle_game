@@ -232,7 +232,7 @@ public class Portal : MonoBehaviour
 
             if (i == recursionLimit - 1)
             {
-                portalCamera.cullingMask &= ~(1 << LayerMask.NameToLayer("Clone Traveller"));
+                portalCamera.cullingMask &= ~(1 << LayerMask.NameToLayer("Clone Player"));
             }
 
             // Warning says RenderSingleCamera is obsolete, but the alternative is broken in current version

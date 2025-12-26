@@ -10,6 +10,7 @@ public class LaserEmitter : MonoBehaviour
     public float defaultLength = 100f;
     private int ignoreLayer = -1;
     private Vector3 baseScale;
+    private Collider prevHitCollider;
 
     void Start()
     {
@@ -65,6 +66,13 @@ public class LaserEmitter : MonoBehaviour
         if (Physics.Raycast(transform.position, transform.forward, out hit, Mathf.Infinity, mask, QueryTriggerInteraction.Ignore))
         {
             laserLength = hit.distance;
+
+            if (hit.collider.CompareTag("Portal"))
+            {
+                Portal portal = hit.collider.GetComponentInParent<Portal>();
+            }
+
+            prevHitCollider = hit.collider;
         }
 
         // Position the laser so its center is at half the length along forward

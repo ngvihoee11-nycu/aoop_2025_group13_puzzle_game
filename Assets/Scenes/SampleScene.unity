@@ -884,7 +884,7 @@ GameObject:
   - component: {fileID: 1021661228}
   - component: {fileID: 1021661225}
   - component: {fileID: 1021661224}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Player
   m_TagString: Player
   m_Icon: {fileID: 0}
@@ -1344,7 +1344,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1744831609}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Eye Anchor
   m_TagString: Untagged
   m_Icon: {fileID: 0}

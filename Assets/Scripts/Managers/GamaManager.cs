@@ -11,8 +11,5 @@ public class GamaManager : Singleton<GamaManager>
         QualitySettings.vSyncCount = 0;
         Application.targetFrameRate = targetFPS;
         SceneManager.LoadScene("MainMenu", LoadSceneMode.Additive);
-
-        Physics.IgnoreLayerCollision(LayerMask.NameToLayer("Portal Traveller"), LayerMask.NameToLayer("Portal"), true);
-        Physics.IgnoreLayerCollision(LayerMask.NameToLayer("Clone Traveller"), LayerMask.NameToLayer("Portal"), true);
     }
 }
