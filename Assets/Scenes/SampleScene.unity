@@ -884,7 +884,7 @@ GameObject:
   - component: {fileID: 1021661228}
   - component: {fileID: 1021661225}
   - component: {fileID: 1021661224}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Player
   m_TagString: Player
   m_Icon: {fileID: 0}
@@ -906,12 +906,15 @@ MonoBehaviour:
   graphicsObject: {fileID: 1788874991}
   walkSpeed: 4
   runSpeed: 8
-  smoothMoveTime: 0.1
+  airSpeed: 2
   gravity: -9.81
-  jumpHeight: 1.5
+  jumpHeight: 1
+  smoothMoveTime: 0.1
+  airDampTime: 1
+  lockCursor: 0
   eyeTransform: {fileID: 1744831609}
   eyeOffset: {x: 0, y: 0.375, z: 0}
-  mouseSensitivity: 500
+  mouseSensitivity: 1000
   minPitch: -90
   maxPitch: 90
   smoothRotationTime: 0.1
@@ -981,6 +984,21 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 665913232499495643, guid: d0799209de2c12e4e8421958aa7229ae,
+        type: 3}
+      propertyPath: m_Layer
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1966875496906161425, guid: d0799209de2c12e4e8421958aa7229ae,
+        type: 3}
+      propertyPath: m_Layer
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2404235799692161852, guid: d0799209de2c12e4e8421958aa7229ae,
+        type: 3}
+      propertyPath: m_Layer
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 2912585911831322444, guid: d0799209de2c12e4e8421958aa7229ae,
         type: 3}
       propertyPath: m_LocalPosition.x
@@ -1031,10 +1049,20 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 3142154756858191352, guid: d0799209de2c12e4e8421958aa7229ae,
+        type: 3}
+      propertyPath: m_Layer
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 3156081837618832756, guid: d0799209de2c12e4e8421958aa7229ae,
         type: 3}
       propertyPath: m_Name
       value: Portal
+      objectReference: {fileID: 0}
+    - target: {fileID: 3156081837618832756, guid: d0799209de2c12e4e8421958aa7229ae,
+        type: 3}
+      propertyPath: m_Layer
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3950520709541869664, guid: d0799209de2c12e4e8421958aa7229ae,
         type: 3}
@@ -1059,6 +1087,11 @@ PrefabInstance:
     - target: {fileID: 7464172698200867231, guid: d0799209de2c12e4e8421958aa7229ae,
         type: 3}
       propertyPath: m_BackGroundColor.r
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9004466055258326820, guid: d0799209de2c12e4e8421958aa7229ae,
+        type: 3}
+      propertyPath: m_Layer
       value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
@@ -1311,7 +1344,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1744831609}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Eye Anchor
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -6267,6 +6300,7 @@ GameObject:
   - component: {fileID: 1788874995}
   - component: {fileID: 1788874994}
   - component: {fileID: 1788874993}
+  - component: {fileID: 1788874996}
   m_Layer: 7
   m_Name: Model
   m_TagString: Untagged
@@ -6340,6 +6374,29 @@ Transform:
   - {fileID: 859985927}
   m_Father: {fileID: 1021661229}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!136 &1788874996
+CapsuleCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1788874991}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 2
+  m_Radius: 0.5
+  m_Height: 2
+  m_Direction: 1
+  m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &1881926233
 GameObject:
   m_ObjectHideFlags: 0

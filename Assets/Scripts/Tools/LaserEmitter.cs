@@ -6,10 +6,10 @@ using UnityEngine;
 public class LaserEmitter : MonoBehaviour
 {
     public GameObject laserPrefab;
-    private GameObject currentLaser;
-    public float defaultLength = 100f;
+    private List<Laser> lasers;
+    public float maxLength = 100f;
+    public int maxLasers = 10;
     private int ignoreLayer = -1;
-    private Vector3 baseScale;
 
     void Start()
     {
@@ -26,16 +26,12 @@ public class LaserEmitter : MonoBehaviour
             Debug.LogError("Collider component is missing on Laser prefab or its children!");
         }
 
-        // Instantiate laser once and keep updating its transform/scale in Update()
-        currentLaser = Instantiate(laserPrefab, transform.position, transform.rotation, transform);
-        baseScale = currentLaser.transform.localScale;
-
         // Put instantiated laser on Ignore Raycast layer to avoid self-hit
         ignoreLayer = LayerMask.NameToLayer("Ignore Raycast");
-        if (ignoreLayer != -1)
-        {
-            SetLayerRecursively(currentLaser, ignoreLayer);
-        }
+
+        // Instantiate laser once and keep updating its transform/scale in Update()
+        lasers = new List<Laser>();
+        LaserInit(0, transform.position, transform.rotation);
 
         // Initial update
         EmitLaser();
@@ -49,30 +45,111 @@ public class LaserEmitter : MonoBehaviour
 
     public void EmitLaser()
     {
-        if (currentLaser == null)
+        float remainLength = maxLength;
+
+        if (lasers.Count == 0 || lasers[0] == null)
         {
-            // If laser was destroyed for some reason, recreate it
-            currentLaser = Instantiate(laserPrefab, transform.position, transform.rotation, transform);
-            baseScale = currentLaser.transform.localScale;
-            if (ignoreLayer != -1)
-                SetLayerRecursively(currentLaser, ignoreLayer);
+            LaserInit(0, transform.position, transform.rotation);
         }
 
+        for (int i = 1; i < lasers.Count; i++)
+        {
+            if (lasers[i])
+            {
+                lasers[i].gameObject.SetActive(false);
+            }
+        }
+
+        for (int i = 0; i < lasers.Count; i++)
+        {
+            if(lasers[i].gameObject.activeSelf)
+            {
+                float usedLength = LaserRaycast(i, remainLength);
+                remainLength -= usedLength;
+            }
+        }
+
+    }
+
+    public Laser LaserInit(int index, Vector3 position, Quaternion rotation)
+    {
+        if (lasers.Count <= index)
+        {
+            lasers.Add(Instantiate(laserPrefab, position, rotation, transform).GetComponent<Laser>());
+        }
+        if (lasers[index] == null)
+        {
+            lasers[index] = Instantiate(laserPrefab, position, rotation, transform).GetComponent<Laser>();
+        }
+
+        lasers[index].startPosition = position;
+
+        if (ignoreLayer != -1)
+        {
+            SetLayerRecursively(lasers[index].gameObject, ignoreLayer);
+        }
+        return lasers[index];
+    }
+
+    public float LaserRaycast(int index, float length)
+    {
         // Raycast to determine laser length and position
+        Laser laser = lasers[index];
+
         RaycastHit hit;
-        float laserLength = defaultLength;
+        float laserLength = length;
         int mask = ~LayerMask.GetMask("Laser Emitter", "Ignore Raycast");
-        if (Physics.Raycast(transform.position, transform.forward, out hit, Mathf.Infinity, mask))
+
+        int layerTemp = 0;
+        if (laser.exitingCollider)
+        {
+            layerTemp = laser.exitingCollider.gameObject.layer;
+            laser.exitingCollider.gameObject.layer = LayerMask.NameToLayer("Ignore Raycast");
+        }
+
+        if (Physics.Raycast(laser.startPosition, laser.transform.forward, out hit, length, mask, QueryTriggerInteraction.Ignore))
         {
             laserLength = hit.distance;
+
+            if (hit.collider.CompareTag("Portal"))
+            {
+                Portal portal = hit.collider.GetComponentInParent<Portal>();
+                if (index + 1 < maxLasers && portal.linkedPortal)
+                {
+                    Transform portalT = portal.transform;
+                    Transform linkedPortalT = portal.linkedPortal.transform;
+                    Matrix4x4 fromMatrix = Matrix4x4.TRS(hit.point, laser.transform.rotation, new Vector3(1f, 1f, 1f));
+                    Matrix4x4 toMatrix = linkedPortalT.localToWorldMatrix * Matrix4x4.Rotate(Quaternion.Euler(0f, 180f, 0f)) * portalT.worldToLocalMatrix * fromMatrix;
+
+                    if (lasers.Count <= index + 1 || lasers[index + 1] == null)
+                    {
+                        Laser nextLaser = LaserInit(index + 1, toMatrix.GetPosition(), toMatrix.rotation);
+                        nextLaser.exitingCollider = hit.collider;
+                    }
+                    else
+                    {
+                        Laser nextLaser = lasers[index + 1];
+                        nextLaser.gameObject.SetActive(true);
+                        nextLaser.startPosition = toMatrix.GetPosition();
+                        nextLaser.transform.rotation = toMatrix.rotation;
+                        nextLaser.exitingCollider = hit.collider;
+                    }
+                }
+            }
+        }
+
+        if (laser.exitingCollider)
+        {
+            laser.exitingCollider.gameObject.layer = layerTemp;
         }
 
         // Position the laser so its center is at half the length along forward
-        currentLaser.transform.position = transform.position + transform.forward * (laserLength / 2f);
-        currentLaser.transform.rotation = transform.rotation;
+        laser.transform.position = laser.startPosition + laser.transform.forward * (laserLength / 2f);
 
         // Update scale: keep base X/Y, set Z to laserLength (matches previous behavior)
-        currentLaser.transform.localScale = new Vector3(baseScale.x, baseScale.y, laserLength);
+        Vector3 scale = laser.transform.localScale;
+        laser.transform.localScale = new Vector3(scale.x, scale.y, laserLength);
+        return laserLength;
     }
 
     private IEnumerator ResetEmittingFlag()

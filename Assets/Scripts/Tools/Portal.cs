@@ -25,7 +25,7 @@ public class Portal : MonoBehaviour
     RenderTexture viewTexture;
     Camera portalCamera;
     Camera playerCamera;
-    public List<PortalTraveller> trackedTravellers;
+    List<PortalTraveller> trackedTravellers;
     MeshFilter screenMeshFilter;
 
     public static Portal SpawnPortal(GameObject portalPrefab, Portal linkedPortal, RaycastHit hit, Transform eyeT, bool isSecondPortal)
@@ -90,7 +90,7 @@ public class Portal : MonoBehaviour
                 var rotOld = traveller.transform.rotation;
                 // Teleport the traveller to the linked portal
                 traveller.Teleport(transform, linkedPortal.transform, m.GetPosition(), m.rotation);
-                traveller.AdjustClone(transform, linkedPortal.transform, positionOld, rotOld);
+                traveller.AdjustClone(linkedPortal.transform, transform, positionOld, rotOld);
                 traveller.IgnoreCollision(attachedSurface, false);
                 linkedPortal.OnTravellerEnter(traveller); // Notify the linked portal of the traveller's entry
                 trackedTravellers.RemoveAt(i);
@@ -232,7 +232,7 @@ public class Portal : MonoBehaviour
 
             if (i == recursionLimit - 1)
             {
-                portalCamera.cullingMask &= ~(1 << LayerMask.NameToLayer("FPPHidePortal"));
+                portalCamera.cullingMask &= ~(1 << LayerMask.NameToLayer("Clone Player"));
             }
 
             // Warning says RenderSingleCamera is obsolete, but the alternative is broken in current version
@@ -269,8 +269,8 @@ public class Portal : MonoBehaviour
             }
             viewTexture = new RenderTexture(Screen.width, Screen.height, 0);
             portalCamera.targetTexture = viewTexture;
-            linkedPortal.screen.material.SetTexture("_MainTex", viewTexture);
         }
+        linkedPortal.screen.material.SetTexture("_MainTex", viewTexture);
     }
 
     // Sets the thickness of the portal screen so as not to clip with camera near plane when player goes through

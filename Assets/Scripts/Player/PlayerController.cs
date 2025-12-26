@@ -3,19 +3,20 @@ using UnityEngine;
 public class PlayerController : PortalTravellerSingleton<PlayerController>
 {
     [Header("Movement")]
-    public float walkSpeed = 5f;
-    public float runSpeed = 10f;
-    public float smoothMoveTime = 0.1f;
-
-    [Header("Physics")]
+    public float walkSpeed = 4f;
+    public float runSpeed = 8f;
+    public float airSpeed = 2f;
     public float gravity = -9.81f;
     public float jumpHeight = 1.5f;
-    private Vector3 velocity;
-    private float verticalVelocity;
+    public float smoothMoveTime = 0.1f;
+    public float airDampTime = 1f;
+    private bool customGrounded = true;
     private Vector3 smoothV;
+    private Vector3 velocity;
     private CharacterController characterController;
 
     [Header("Camera")]
+    public bool lockCursor;
     public Transform eyeTransform;
     public Vector3 eyeOffset = new Vector3(0f, 0.375f, 0f);
     public float mouseSensitivity = 100f;
@@ -33,7 +34,7 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
     private float yawSmoothV;
     private Vector3 eyeSmoothPosV;
     private float eyeSmoothRotV;
-    private Vector3 modelRotSmoothV;
+    private Vector3 modelSmoothRotV;
 
     [Header("Shooting")]
     public GameObject portalPrefab;
@@ -48,11 +49,28 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
 
     void Start()
     {
+        if (lockCursor)
+        {
+            Cursor.lockState = CursorLockMode.Locked;
+            Cursor.visible = false;
+        }
+
         mainCamera = MainCamera.instance.GetCamera();
         characterController = GetComponent<CharacterController>();
         if (characterController == null)
         {
             Debug.LogError("CharacterController component is missing on Player!");
+        }
+
+        if (graphicsObject == null)
+        {
+            Debug.LogError("Graphics object is missing on player!");
+        }
+
+        graphicsObject.layer = LayerMask.NameToLayer("Player");
+        foreach (Transform child in graphicsObject.GetComponentsInChildren<Transform>())
+        {
+            child.gameObject.layer = LayerMask.NameToLayer("Player");
         }
 
         if (eyeTransform == null)
@@ -68,42 +86,85 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
 
     void Update()
     {
+        if ((lockCursor && Input.GetKeyDown(KeyCode.Tab)) || (!lockCursor && Input.GetMouseButtonUp(0)))
+        {
+            lockCursor = !lockCursor;
+            if (lockCursor)
+            {
+                Cursor.lockState = CursorLockMode.Locked;
+                Cursor.visible = false;
+            }
+            else
+            {
+                Cursor.lockState = CursorLockMode.None;
+                Cursor.visible = true;
+            }
+        }
+
+        bool grounded = characterController.isGrounded;
+
         Vector2 input = new Vector2(Input.GetAxis("Horizontal"), Input.GetAxis("Vertical"));
         Vector3 inputDir = new Vector3(input.x, 0, input.y).normalized;
         Vector3 worldInputDir = transform.TransformDirection(inputDir);
-        
-        float targetSpeed = Input.GetKey(KeyCode.LeftShift) ? runSpeed : walkSpeed;
-        Vector3 targetVelocity = worldInputDir * targetSpeed;
-        velocity = Vector3.SmoothDamp(velocity, targetVelocity, ref smoothV, smoothMoveTime);
-        
 
-        // Apply gravity and jumping
-        bool grounded = characterController.isGrounded;
-        if (grounded && verticalVelocity < 0f)
+        float movingSpeed = Input.GetKey(KeyCode.LeftShift) ? runSpeed : walkSpeed;
+
+        if (grounded && customGrounded)
         {
+            Vector3 inputVelocity = worldInputDir * movingSpeed;
+            float verticalVelocity = velocity.y;
             // Small negative value to keep the controller grounded
-            verticalVelocity = -0.02f;
-        }
-
-        if (grounded && Input.GetButtonDown("Jump"))
-        {
+            if (velocity.y < 0f)
+            {
+                verticalVelocity = -0.2f;
+            }
             // v = sqrt(2 * g * h) but gravity is negative so use -2 * gravity
-            verticalVelocity = Mathf.Sqrt(jumpHeight * -2f * gravity);
+            if (Input.GetButtonDown("Jump"))
+            {
+                verticalVelocity = Mathf.Sqrt(jumpHeight * -2f * gravity);
+            }
+            velocity = Vector3.SmoothDamp(velocity, inputVelocity, ref smoothV, smoothMoveTime);
+            velocity.y = verticalVelocity;
+        }
+        else
+        {
+            Vector3 inputVelocity = worldInputDir * airSpeed;
+            velocity.y += gravity * Time.deltaTime;
+            velocity.y = Mathf.SmoothDamp(velocity.y, 0f, ref smoothV.y, airDampTime);
+
+            if (inputVelocity.x != 0 && (Mathf.Sign(inputVelocity.x) != Mathf.Sign(velocity.x) || Mathf.Abs(inputVelocity.x) > Mathf.Abs(velocity.x)))
+            {
+                velocity.x = Mathf.SmoothDamp(velocity.x, inputVelocity.x, ref smoothV.x, smoothMoveTime);
+            }
+            else
+            {
+                velocity.x = Mathf.SmoothDamp(velocity.x, inputVelocity.x, ref smoothV.x, airDampTime);
+            }
+
+            if (inputVelocity.z != 0 && (Mathf.Sign(inputVelocity.z) != Mathf.Sign(velocity.z) || Mathf.Abs(inputVelocity.z) > Mathf.Abs(velocity.z)))
+            {
+                velocity.z = Mathf.SmoothDamp(velocity.z, inputVelocity.z, ref smoothV.z, smoothMoveTime);
+            }
+            else
+            {
+                velocity.z = Mathf.SmoothDamp(velocity.z, inputVelocity.z, ref smoothV.z, airDampTime);   
+            }
         }
 
-        // Integrate gravity
-        verticalVelocity += gravity * Time.deltaTime;
-
-        velocity.y = verticalVelocity;
         characterController.Move(velocity * Time.deltaTime);
 
-        // Handle Camera Rotation (mouse look)
-        float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity * Time.deltaTime;
-        float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity * Time.deltaTime;
+        customGrounded = characterController.isGrounded;
 
-        yaw = (yaw + mouseX) % 360f;
-        pitch -= mouseY;
-        pitch = Mathf.Clamp(pitch, minPitch, maxPitch);
+        if (lockCursor)
+        {
+            // Handle Camera Rotation (mouse look)
+            float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity * Time.deltaTime;
+            float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity * Time.deltaTime;
+
+            yaw = (yaw + mouseX) % 360f;
+            pitch -= mouseY;
+            pitch = Mathf.Clamp(pitch, minPitch, maxPitch);
+        }
 
         smoothPitch = Mathf.SmoothDampAngle(smoothPitch, pitch, ref pitchSmoothV, smoothRotationTime);
         smoothYaw = Mathf.SmoothDampAngle(smoothYaw, yaw, ref yawSmoothV, smoothRotationTime);
@@ -113,9 +174,9 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
         if (graphicsObject)
         {
             Vector3 modelRot = graphicsObject.transform.localEulerAngles;
-            modelRot.x = Mathf.SmoothDampAngle(modelRot.x, 0, ref modelRotSmoothV.x, smoothModelRotationTime);
-            modelRot.y = Mathf.SmoothDampAngle(modelRot.y, 0, ref modelRotSmoothV.y, smoothModelRotationTime);
-            modelRot.z = Mathf.SmoothDampAngle(modelRot.z, 0, ref modelRotSmoothV.z, smoothModelRotationTime);
+            modelRot.x = Mathf.SmoothDampAngle(modelRot.x, 0, ref modelSmoothRotV.x, smoothModelRotationTime);
+            modelRot.y = Mathf.SmoothDampAngle(modelRot.y, 0, ref modelSmoothRotV.y, smoothModelRotationTime);
+            modelRot.z = Mathf.SmoothDampAngle(modelRot.z, 0, ref modelSmoothRotV.z, smoothModelRotationTime);
             graphicsObject.transform.localEulerAngles = modelRot;
         }
 
@@ -127,27 +188,38 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
         eyeRot.z = Mathf.SmoothDampAngle(eyeRot.z, 0, ref eyeSmoothRotV, smoothAxisChangeTime);
         eyeTransform.eulerAngles = eyeRot;
 
-        // Input: mouse down enters aiming; mouse up performs Raycast spawn
-        // Start aiming on button down
-        if (Input.GetMouseButtonDown(0))
+        if (lockCursor)
         {
-            isAimingLeft = true;
-        }
-        if (Input.GetMouseButtonDown(1))
-        {
-            isAimingRight = true;
-        }
+            // Input: mouse down enters aiming; mouse up performs Raycast spawn
+            // Start aiming on button down
+            if (Input.GetMouseButtonDown(0))
+            {
+                isAimingLeft = true;
+            }
+            if (Input.GetMouseButtonDown(1))
+            {
+                isAimingRight = true;
+            }
 
-        // On button release, perform Raycast and spawn corresponding prefab
-        if (Input.GetMouseButtonUp(0) && isAimingLeft)
-        {
-            PerformShoot(0);
-            isAimingLeft = false;
+            // On button release, perform Raycast and spawn corresponding prefab
+            if (Input.GetMouseButtonUp(0) && isAimingLeft)
+            {
+                PerformShoot(0);
+                isAimingLeft = false;
+            }
+            if (Input.GetMouseButtonUp(1) && isAimingRight)
+            {
+                PerformShoot(1);
+                isAimingRight = false;
+            }
         }
-        if (Input.GetMouseButtonUp(1) && isAimingRight)
+    }
+
+    void OnControllerColliderHit(ControllerColliderHit hit)
+    {
+        if (Vector3.Distance(hit.normal, Vector3.up) >= 0.01f && Vector3.Dot(velocity, hit.normal) < 0f)
         {
-            PerformShoot(1);
-            isAimingRight = false;
+            velocity -= Vector3.Dot(velocity, hit.normal) * hit.normal;
         }
     }
 
@@ -155,8 +227,8 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
     {
         Ray ray = new Ray(eyeTransform.position, eyeTransform.forward);
         RaycastHit hit;
-        int layerMask = ~(1 << LayerMask.NameToLayer("FPPHide") | 1 << LayerMask.NameToLayer("Portal")); // Ignore FPPHide layer
-        if (Physics.Raycast(ray, out hit, maxShootDistance, layerMask))
+        int layerMask = ~LayerMask.GetMask("Player", "Portal"); // Ignore Portal Traveller layer
+        if (Physics.Raycast(ray, out hit, maxShootDistance, layerMask, QueryTriggerInteraction.Ignore))
         {
             if (portalPrefab == null)
             {
@@ -190,35 +262,35 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
         layerMaskSwapped = swap;
         if (swap)
         {
-            graphicsObject.layer = LayerMask.NameToLayer("FPPHidePortal");
+            graphicsObject.layer = LayerMask.NameToLayer("Clone Player");
             foreach (Transform child in graphicsObject.GetComponentsInChildren<Transform>())
             {
-                child.gameObject.layer = LayerMask.NameToLayer("FPPHidePortal");
+                child.gameObject.layer = LayerMask.NameToLayer("Clone Player");
             }
 
             if (graphicsClone)
             {
-                graphicsClone.layer = LayerMask.NameToLayer("FPPHide");
+                graphicsClone.layer = LayerMask.NameToLayer("Player");
                 foreach (Transform child in graphicsClone.GetComponentsInChildren<Transform>())
                 {
-                    child.gameObject.layer = LayerMask.NameToLayer("FPPHide");
+                    child.gameObject.layer = LayerMask.NameToLayer("Player");
                 }
             }
         }
         else
         {
-            graphicsObject.layer = LayerMask.NameToLayer("FPPHide");
+            graphicsObject.layer = LayerMask.NameToLayer("Player");
             foreach (Transform child in graphicsObject.GetComponentsInChildren<Transform>())
             {
-                child.gameObject.layer = LayerMask.NameToLayer("FPPHide");
+                child.gameObject.layer = LayerMask.NameToLayer("Player");
             }
 
             if (graphicsClone)
             {
-                graphicsClone.layer = LayerMask.NameToLayer("FPPHidePortal");
+                graphicsClone.layer = LayerMask.NameToLayer("Clone Player");
                 foreach (Transform child in graphicsClone.GetComponentsInChildren<Transform>())
                 {
-                    child.gameObject.layer = LayerMask.NameToLayer("FPPHidePortal");
+                    child.gameObject.layer = LayerMask.NameToLayer("Clone Player");
                 }
             }
         }
@@ -231,11 +303,12 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
             graphicsClone = Instantiate(graphicsObject);
             graphicsClone.transform.parent = graphicsObject.transform.parent;
             graphicsClone.transform.localScale = graphicsObject.transform.localScale;
-            graphicsClone.layer = LayerMask.NameToLayer("FPPHidePortal");
-
-            foreach (Transform child in graphicsClone.transform)
+            
+            layerMaskSwapped = false;
+            graphicsClone.layer = LayerMask.NameToLayer("Clone Player");
+            foreach (Transform child in graphicsClone.GetComponentsInChildren<Transform>())
             {
-                child.gameObject.layer = LayerMask.NameToLayer("FPPHidePortal");
+                child.gameObject.layer = LayerMask.NameToLayer("Clone Player");
             }
 
             originalMaterials = GetMaterials(graphicsObject);
@@ -254,8 +327,9 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
 
     public override void AdjustClone(Transform fromPortal, Transform toPortal, Vector3 pos, Quaternion rot)
     {
-        graphicsClone.transform.position = pos;
-        graphicsClone.transform.rotation = (toPortal.localToWorldMatrix * Matrix4x4.Rotate(Quaternion.Euler(0f, 180f, 0f)) * fromPortal.worldToLocalMatrix * graphicsObject.transform.localToWorldMatrix).rotation;
+        Matrix4x4 modelM = toPortal.localToWorldMatrix * Matrix4x4.Rotate(Quaternion.Euler(0f, 180f, 0f)) * fromPortal.worldToLocalMatrix * graphicsObject.transform.localToWorldMatrix;
+        graphicsClone.transform.position = modelM.GetPosition();
+        graphicsClone.transform.rotation = modelM.rotation;
     }
 
     public override void Teleport(Transform fromPortal, Transform toPortal, Vector3 pos, Quaternion rot)
@@ -264,7 +338,7 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
         Matrix4x4 teleportMatrix = toPortal.localToWorldMatrix * Matrix4x4.Rotate(Quaternion.Euler(0f, 180f, 0f)) * fromPortal.worldToLocalMatrix;
 
         Matrix4x4 eyeM = teleportMatrix * eyeTransform.localToWorldMatrix;
-        Quaternion graphicsRotation = (teleportMatrix * graphicsObject.transform.localToWorldMatrix).rotation;
+        Matrix4x4 modelM = teleportMatrix * graphicsObject.transform.localToWorldMatrix;
 
         transform.position = pos;
 
@@ -282,9 +356,16 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
 
         eyeTransform.rotation = eyeM.rotation;
 
-        graphicsObject.transform.rotation = graphicsRotation;
+        graphicsObject.transform.position = modelM.GetPosition();
+        graphicsObject.transform.rotation = modelM.rotation;
 
         velocity = toPortal.TransformVector(Matrix4x4.Rotate(Quaternion.Euler(0f, 180f, 0f)).MultiplyVector(fromPortal.InverseTransformVector(velocity)));
+
+        if (Vector3.Distance(toPortal.forward, Vector3.up) < 0.1f)
+        {
+            velocity.y = Mathf.Max(velocity.y, -0.4f * gravity);
+            customGrounded = false;
+        }
 
         Physics.SyncTransforms(); // Ensure physics is updated after teleportation
     }

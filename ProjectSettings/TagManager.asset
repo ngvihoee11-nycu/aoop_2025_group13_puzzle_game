@@ -5,6 +5,7 @@ TagManager:
   serializedVersion: 2
   tags:
   - Goal
+  - Portal
   layers:
   - Default
   - TransparentFX
@@ -13,11 +14,11 @@ TagManager:
   - Water
   - UI
   - Laser Emitter
-  - FPPHide
-  - FPPHidePortal
+  - Player
+  - Clone Player
+  - Portal Traveller
+  - Clone Traveller
   - Portal
-  - 
-  - 
   - 
   - 
   - 
