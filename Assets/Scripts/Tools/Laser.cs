@@ -4,6 +4,9 @@ using UnityEngine;
 
 public class Laser : MonoBehaviour
 {
+    public Vector3 startPosition;
+    public Collider exitingCollider;
+
     void OnTriggerEnter(Collider other)
     {
         GetComponentInParent<LaserEmitter>().EmitLaser();
