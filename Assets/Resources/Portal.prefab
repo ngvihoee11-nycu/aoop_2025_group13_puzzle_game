@@ -409,8 +409,7 @@ MonoBehaviour:
   isSecondPortal: 0
   nearClipOffset: 0.05
   nearClipLimit: 0.2
-  defaultScreenThickness: 0.002
-  trackedTravellers: []
+  forceExitThicknessRatio: 5
 --- !u!1 &9004466055258326820
 GameObject:
   m_ObjectHideFlags: 0

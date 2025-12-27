@@ -6,6 +6,7 @@ TagManager:
   tags:
   - Goal
   - Portal
+  - Mirror
   layers:
   - Default
   - TransparentFX

@@ -850,8 +850,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b0e21da2a94f27f009f25bac8c4e5690, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  spawnOffset: 0.05
-  emitterTimeToLive: 2
 --- !u!114 &837725950
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1045,7 +1043,6 @@ GameObject:
   - component: {fileID: 1021661228}
   - component: {fileID: 1021661225}
   - component: {fileID: 1021661224}
-  - component: {fileID: 1021661230}
   m_Layer: 7
   m_Name: Player
   m_TagString: Player
@@ -1073,6 +1070,10 @@ MonoBehaviour:
   jumpHeight: 1
   smoothMoveTime: 0.1
   airDampTime: 1
+  customGrounded: 1
+  preMovePosition: {x: 0, y: 0, z: 0}
+  velocity: {x: 0, y: 0, z: 0}
+  movedAgain: 0
   lockCursor: 0
   eyeTransform: {fileID: 1744831609}
   eyeOffset: {x: 0, y: 0.375, z: 0}
@@ -6776,6 +6777,4 @@ SceneRoots:
   - {fileID: 1719307888}
   - {fileID: 40112777}
   - {fileID: 1820696908}
-  - {fileID: 1043352625}
-  - {fileID: 1539247581}
   - {fileID: 837725954}
