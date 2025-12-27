@@ -12,8 +12,10 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
     public float airDampTime = 1f;
     private bool customGrounded = true;
     private Vector3 smoothV;
+    private Vector3 preMovePosition;
     private Vector3 velocity;
     private CharacterController characterController;
+    private bool movedAgain;
 
     [Header("Camera")]
     public bool lockCursor;
@@ -158,9 +160,12 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
             }
         }
 
+
+        movedAgain = false;
+        preMovePosition = transform.position;
         characterController.Move(velocity * Time.deltaTime);
 
-        customGrounded = characterController.isGrounded;
+        customGrounded = movedAgain ? false : characterController.isGrounded;
 
         if (lockCursor)
         {
@@ -224,7 +229,22 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
 
     void OnControllerColliderHit(ControllerColliderHit hit)
     {
-        if (Vector3.Distance(hit.normal, Vector3.up) >= 0.01f && Vector3.Dot(velocity, hit.normal) < 0f)
+        if (hit.collider.CompareTag("Portal"))
+        {
+            Portal portal = hit.collider.GetComponentInParent<Portal>();
+            if (portal.linkedPortal)
+            {
+                portal.OnTravellerEnter(this);
+                if(!movedAgain)
+                {
+                    movedAgain = true;
+                    transform.position = preMovePosition;
+                    Physics.SyncTransforms();
+                    characterController.Move(velocity * Time.deltaTime);
+                }
+            }
+        }
+        else if (Vector3.Distance(hit.normal, Vector3.up) >= 0.01f && Vector3.Dot(velocity, hit.normal) < 0f)
         {
             velocity -= Vector3.Dot(velocity, hit.normal) * hit.normal;
         }
@@ -370,10 +390,16 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
 
         if (Vector3.Distance(toPortal.forward, Vector3.up) < 0.1f)
         {
-            velocity.y = Mathf.Max(velocity.y, -0.4f * gravity);
+            velocity.y = Mathf.Max(velocity.y, -0.1f * gravity);
             customGrounded = false;
         }
 
         Physics.SyncTransforms(); // Ensure physics is updated after teleportation
     }
+
+    public override Collider GetCollider()
+    {
+        return characterController;
+    }
+
 }

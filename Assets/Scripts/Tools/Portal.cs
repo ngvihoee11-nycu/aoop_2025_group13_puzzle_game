@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine.Rendering;
@@ -9,6 +10,7 @@ public class Portal : MonoBehaviour
     [Header("Main Settings")]
     public Collider attachedSurface;
     public Portal linkedPortal;
+    public Collider screenCollider;
     public MeshRenderer screen;
     public MeshRenderer frame;
     public GameObject trigger;
@@ -19,7 +21,7 @@ public class Portal : MonoBehaviour
     [Header("Advanced Settings")]
     public float nearClipOffset = 0.05f;
     public float nearClipLimit = 0.2f;
-    public float defaultScreenThickness = 0.002f;
+    public float forceExitThicknessRatio = 3f;
 
 
     RenderTexture viewTexture;
@@ -59,6 +61,31 @@ public class Portal : MonoBehaviour
         MainCamera.instance.AddPortal(this);
     }
 
+    void Update()
+    {
+        if (linkedPortal)
+        {
+            CheckTravellers();
+        }
+    }
+
+    void CheckTravellers()
+    {
+        for (int i = trackedTravellers.Count - 1; i >= 0; i--)
+        {
+            PortalTraveller traveller = trackedTravellers[i];
+            if (Vector3.Dot(transform.forward, traveller.prevOffsetFromPortal) > trigger.transform.localScale.z)
+            {
+                Vector3 checkRange = new Vector3(transform.localScale.x * 0.5f, transform.localScale.y * 0.5f, trigger.transform.localScale.z * forceExitThicknessRatio);
+                List<Collider> colliders = Physics.OverlapBox(transform.position, checkRange, transform.rotation).ToList();
+                if (!colliders.Contains(traveller.GetCollider()))
+                {
+                    OnTravellerExit(traveller);
+                }
+            }
+        }
+    }
+
     void LateUpdate()
     {
         if (linkedPortal)
@@ -91,9 +118,8 @@ public class Portal : MonoBehaviour
                 // Teleport the traveller to the linked portal
                 traveller.Teleport(transform, linkedPortal.transform, m.GetPosition(), m.rotation);
                 traveller.AdjustClone(linkedPortal.transform, transform, positionOld, rotOld);
-                traveller.IgnoreCollision(attachedSurface, false);
+                OnTravellerExit(traveller, true);
                 linkedPortal.OnTravellerEnter(traveller); // Notify the linked portal of the traveller's entry
-                trackedTravellers.RemoveAt(i);
                 linkedPortal.ProtectScreenFromClipping(playerCamera.transform.position);
             }
             else
@@ -105,16 +131,34 @@ public class Portal : MonoBehaviour
         }
     }
 
-    void OnTravellerEnter(PortalTraveller traveller)
+    public void OnTravellerEnter(PortalTraveller traveller)
     {
         if (!trackedTravellers.Contains(traveller))
         {
             traveller.EnterPortalTrigger();
             traveller.prevOffsetFromPortal = traveller.transform.position - transform.position;
             trackedTravellers.Add(traveller);
+            traveller.IgnoreCollision(screenCollider, true);
             if (attachedSurface)
             {
                 traveller.IgnoreCollision(attachedSurface, true);
+            }
+        }
+    }
+
+    public void OnTravellerExit(PortalTraveller traveller, bool isTeleport = false)
+    {
+        if (trackedTravellers.Contains(traveller))
+        {
+            if (!isTeleport)
+            {
+                traveller.ExitPortalTrigger();
+            }
+            trackedTravellers.Remove(traveller);
+            traveller.IgnoreCollision(screenCollider, false);
+            if (attachedSurface)
+            {
+                traveller.IgnoreCollision(attachedSurface, false);
             }
         }
     }
@@ -131,19 +175,22 @@ public class Portal : MonoBehaviour
     public void ChildTriggerExit(Collider other)
     {
         PortalTraveller traveller = other.GetComponent<PortalTraveller>();
-        if (traveller && trackedTravellers.Contains(traveller))
+        if (traveller)
         {
-            traveller.ExitPortalTrigger();
-            trackedTravellers.Remove(traveller);
-            if (attachedSurface)
-            {
-                traveller.IgnoreCollision(attachedSurface, false);
-            }
+            OnTravellerExit(traveller);
         }
     }
 
     void OnDestroy()
     {
+        if (linkedPortal)
+        {
+            for (int i = trackedTravellers.Count - 1; i >= 0; i--)
+            {
+                PortalTraveller traveller = trackedTravellers[i];
+                OnTravellerExit(traveller);
+            }
+        }
         if (linkedPortal && linkedPortal.linkedPortal == this)
         {
             linkedPortal.linkedPortal = null;

@@ -7,8 +7,6 @@ class LevelManager : Singleton<LevelManager>
 
     void Start()
     {
-        Physics.IgnoreLayerCollision(LayerMask.NameToLayer("Player"), LayerMask.NameToLayer("Portal"), true);
-        Physics.IgnoreLayerCollision(LayerMask.NameToLayer("Clone Player"), LayerMask.NameToLayer("Portal"), true);
         Physics.IgnoreLayerCollision(LayerMask.NameToLayer("Portal Traveller"), LayerMask.NameToLayer("Portal"), true);
         Physics.IgnoreLayerCollision(LayerMask.NameToLayer("Clone Traveller"), LayerMask.NameToLayer("Portal"), true);
 
