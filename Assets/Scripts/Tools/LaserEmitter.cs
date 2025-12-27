@@ -166,4 +166,39 @@ public class LaserEmitter : MonoBehaviour
             SetLayerRecursively(child.gameObject, layer);
         }
     }
+
+    // Public initializer so external code (e.g., portal-teleport or mirror emitters) can initialize a runtime-created emitter
+    public void InitializeLaser()
+    {
+        if (laserPrefab == null)
+        {
+            Debug.LogError("Laser Prefab is not assigned in LaserEmitter!");
+            return;
+        }
+
+        ignoreLayer = LayerMask.NameToLayer("Ignore Raycast");
+        
+        if (lasers == null)
+        {
+            lasers = new List<Laser>();
+        }
+        
+        if (lasers.Count == 0 || lasers[0] == null)
+        {
+            LaserInit(0, transform.position, transform.rotation);
+        }
+        
+        EmitLaser();
+    }
+
+    // Mark the current instantiated laser(s) to have a teleport cooldown so they don't immediately re-teleport/re-reflect
+    public void MarkCurrentLaserTeleportCooldown(float duration)
+    {
+        if (lasers == null || lasers.Count == 0) return;
+        foreach (var laser in lasers)
+        {
+            if (laser != null)
+                laser.BeginTeleportCooldown(duration);
+        }
+    }
 }
