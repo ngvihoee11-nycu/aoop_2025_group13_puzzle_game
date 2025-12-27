@@ -46,8 +46,9 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
 
     private bool layerMaskSwapped = false;
 
-    private Portal portal1;
-    private Portal portal2;
+    [Header("Portal instances")]
+    public Portal portal1;
+    public Portal portal2;
 
     void Start()
     {
@@ -253,9 +254,8 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
     private void PerformShoot(int button)
     {
         Ray ray = new Ray(eyeTransform.position, eyeTransform.forward);
-        RaycastHit hit;
-        int layerMask = ~LayerMask.GetMask("Player", "Portal"); // Ignore Portal Traveller layer
-        if (Physics.Raycast(ray, out hit, maxShootDistance, layerMask, QueryTriggerInteraction.Ignore))
+        int layerMask = ~LayerMask.GetMask("Player", "Portal", "Portal Frame"); // Ignore player and portal collider layer
+        if (Physics.Raycast(ray, out RaycastHit hit, maxShootDistance, layerMask, QueryTriggerInteraction.Ignore))
         {
             if (portalPrefab == null)
             {
@@ -265,18 +265,10 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
 
             if (button == 0)
             {
-                if (portal1 != null)
-                {
-                    Destroy(portal1.gameObject);
-                }
                 portal1 = Portal.SpawnPortal(portalPrefab, portal2, hit, eyeTransform, false);
             }
             else if (button == 1)
             {
-                if (portal2 != null)
-                {
-                    Destroy(portal2.gameObject);
-                }
                 portal2 = Portal.SpawnPortal(portalPrefab, portal1, hit, eyeTransform, true);
             }
         }

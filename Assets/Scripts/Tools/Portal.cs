@@ -11,17 +11,19 @@ public class Portal : MonoBehaviour
     public Collider attachedSurface;
     public Portal linkedPortal;
     public Collider screenCollider;
+    public Collider frameCollider;
     public MeshRenderer screen;
     public MeshRenderer frame;
     public GameObject trigger;
     public int recursionLimit = 3;
     public bool isSecondPortal = false;
+    public static Vector3 defaultScale = new Vector3(1.5f, 2f, 1f);
     public static float spawnOffset = 0.02f;
 
     [Header("Advanced Settings")]
     public float nearClipOffset = 0.05f;
     public float nearClipLimit = 0.2f;
-    public float forceExitThicknessRatio = 3f;
+    public float forceExitThicknessRatio = 5f;
 
 
     RenderTexture viewTexture;
@@ -30,23 +32,127 @@ public class Portal : MonoBehaviour
     List<PortalTraveller> trackedTravellers;
     MeshFilter screenMeshFilter;
 
-    public static Portal SpawnPortal(GameObject portalPrefab, Portal linkedPortal, RaycastHit hit, Transform eyeT, bool isSecondPortal)
+    public static Portal SpawnPortal(GameObject portalPrefab, Portal linkedPortal, RaycastHit hit, Transform eyeT, bool isSecondPortal, bool deleteOldPlayerPortal=true)
     {
-        Portal newPortal = Instantiate(portalPrefab).GetComponent<Portal>();
-        if (linkedPortal)
+        PlayerController player = PlayerController.instance;
+
+        Portal oldPortal = deleteOldPlayerPortal ? (isSecondPortal ? player.portal2 : player.portal1) : null;
+        Vector3 up = (Mathf.Abs(hit.normal.x) < 0.001f && Mathf.Abs(hit.normal.z) < 0.001f) ? eyeT.up : Vector3.up;
+
+        if (oldPortal)
         {
-            newPortal.linkedPortal = linkedPortal;
-            newPortal.linkedPortal.linkedPortal = newPortal;
+            oldPortal.frameCollider.gameObject.layer = LayerMask.NameToLayer("Ignore Raycast");
         }
-        newPortal.transform.SetPositionAndRotation(hit.point + hit.normal * spawnOffset, Quaternion.LookRotation(hit.normal, (Mathf.Abs(hit.normal.x) < 0.001f && Mathf.Abs(hit.normal.z) < 0.001f) ? eyeT.up : Vector3.up));
-        newPortal.attachedSurface = hit.collider;
-        newPortal.isSecondPortal = isSecondPortal;
-        newPortal.UpdateFrameColor();
-        return newPortal;
+
+        if (CanSapwnPortal(hit.point, hit.normal, up, oldPortal, out Vector3 spawnPosition))
+        {
+            if (oldPortal)
+            {
+                oldPortal.Delete();
+            }
+
+            Portal newPortal = Instantiate(portalPrefab).GetComponent<Portal>();
+            if (linkedPortal)
+            {
+                newPortal.linkedPortal = linkedPortal;
+                newPortal.linkedPortal.linkedPortal = newPortal;
+            }
+            newPortal.transform.SetPositionAndRotation(spawnPosition, Quaternion.LookRotation(hit.normal, up));
+            newPortal.attachedSurface = hit.collider;
+            newPortal.isSecondPortal = isSecondPortal;
+            newPortal.UpdateFrameColor();
+            return newPortal;
+        }
+
+        if (oldPortal)
+        {
+            oldPortal.frameCollider.gameObject.layer = LayerMask.NameToLayer("Portal Frame");
+        }
+
+        return oldPortal;
+    }
+
+    // x, y = right, up
+    static readonly Vector2[] edgePermute =
+    {
+        new Vector2(1, 0),
+        new Vector2(-1, 0),
+        new Vector2(0, 1),
+        new Vector2(0, -1)
+    };
+/*
+    static readonly Vector2[] cornerPermute =
+    {
+        new Vector2(1, 1),
+        new Vector2(1, -1),
+        new Vector2(-1, 1),
+        new Vector2(-1, -1)
+    };
+*/
+    static bool CanSapwnPortal(Vector3 position, Vector3 forward, Vector3 semiUp, Portal ignorePortal, out Vector3 newPosition)
+    {
+        Vector3 right = Vector3.Cross(semiUp, forward);
+        Vector3 up = Vector3.Cross(forward, right);
+        float halfWidth = defaultScale.x * 0.5f;
+        float halfHeight = defaultScale.y * 0.5f;
+        float halfThickness = spawnOffset * 0.5f;
+        Vector3 halfExtents = new Vector3(halfWidth, halfHeight, halfThickness);
+        Quaternion orientation = Quaternion.LookRotation(forward, up);
+
+        int layerMask = ~LayerMask.GetMask("Ignore Raycast", "Player", "Portal"); // Ignore player and portal collider layer
+        QueryTriggerInteraction triggerSetting = QueryTriggerInteraction.Ignore;
+
+        Vector3 checkCenter = position + forward * spawnOffset;
+        if (!Physics.CheckBox(checkCenter, halfExtents, orientation, layerMask, triggerSetting))
+        {
+            newPosition = checkCenter;
+            return true;
+        }
+        
+        for (int i = 0; i < 4; i++)
+        {
+            float primaryLen = edgePermute[i/2*2].x * halfWidth + edgePermute[i/2*2].y * halfHeight;
+            float secondaryLen = edgePermute[i/2*2].y * halfWidth + edgePermute[i/2*2].x * halfHeight;
+            Vector3 primaryDir = edgePermute[i].x * right + edgePermute[i].y * up;
+            Vector3 secondaryDir = edgePermute[i].y * right + edgePermute[i].x * up;
+
+            if (Physics.Raycast(checkCenter, primaryDir, out RaycastHit hit1, primaryLen, layerMask, triggerSetting))
+            {
+                Vector3 secondCenter = hit1.point - primaryDir * (primaryLen + spawnOffset);
+                if (!Physics.CheckBox(secondCenter, halfExtents, orientation, layerMask, triggerSetting))
+                {
+                    newPosition = secondCenter;
+                    return true;
+                }
+
+                for (int j = 0; j < 2; j++)
+                {
+                    if (j == 1) secondaryDir *= -1f;
+                    if (Physics.Raycast(hit1.point, secondaryDir, out RaycastHit hit2, secondaryLen, layerMask, triggerSetting))
+                    {
+                        Vector3 thirdCenter = hit2.point - secondaryDir * (secondaryLen + spawnOffset) - primaryDir * (primaryLen + spawnOffset);
+                        if (!Physics.CheckBox(thirdCenter, halfExtents, orientation, layerMask, triggerSetting))
+                        {
+                            newPosition = thirdCenter;
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+
+        //for (int i = 0; i < 4; i++)
+        //{
+        //    
+        //}
+
+        newPosition = position;
+        return false;
     }
     
     void Awake()
     {
+        transform.localScale = defaultScale;
         portalCamera = GetComponentInChildren<Camera>();
         portalCamera.enabled = false;
         trackedTravellers = new List<PortalTraveller>();
@@ -181,7 +287,7 @@ public class Portal : MonoBehaviour
         }
     }
 
-    void OnDestroy()
+    void Delete()
     {
         if (linkedPortal)
         {
@@ -204,6 +310,8 @@ public class Portal : MonoBehaviour
         {
             MainCamera.instance.RemovePortal(this);
         }
+
+        Destroy(gameObject);
     }
 
     public void UpdateFrameColor()
