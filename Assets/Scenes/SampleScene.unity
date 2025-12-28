@@ -1711,9 +1711,6 @@ MonoBehaviour:
   yaw: 0
   smoothAxisChangeTime: 0.2
   smoothModelRotationTime: 0.25
-  portalPrefab: {fileID: 3156081837618832756, guid: d0799209de2c12e4e8421958aa7229ae,
-    type: 3}
-  maxShootDistance: 15
 --- !u!143 &1021661225
 CharacterController:
   m_ObjectHideFlags: 0
@@ -1781,6 +1778,23 @@ MonoBehaviour:
   throwForce: 6
   holdOffset: 2
   holdPoint: {fileID: 0}
+  holdPointTP: {fileID: 0}
+--- !u!114 &1021661231
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1021661223}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4aa1aada675b75dce89897a363c72dc2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  portalPrefab: {fileID: 1971370016}
+  maxShootDistance: 100
+  portal1: {fileID: 0}
+  portal2: {fileID: 0}
 --- !u!1 &1073321071
 GameObject:
   m_ObjectHideFlags: 0
@@ -7352,6 +7366,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   goalPoint: {fileID: 876683355}
   currentLevel: 1
+  portals: []
 --- !u!4 &1706251943
 Transform:
   m_ObjectHideFlags: 0
@@ -8434,6 +8449,12 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1073321072}
   m_LocalEulerAnglesHint: {x: 90, y: 90, z: 0}
+--- !u!1 &1971370016 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 3156081837618832756, guid: d0799209de2c12e4e8421958aa7229ae,
+    type: 3}
+  m_PrefabInstance: {fileID: 1820696908}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &2074817102
 GameObject:
   m_ObjectHideFlags: 0
