@@ -1,9 +1,11 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 class LevelManager : Singleton<LevelManager>
 {
     public Transform goalPoint;
     public int currentLevel = 1;
+    public List<Portal> portals;
 
     void Start()
     {
@@ -19,6 +21,18 @@ class LevelManager : Singleton<LevelManager>
         {
             Debug.LogError("Goal Point does not have a Collider component!");
         }
+
+        portals = new List<Portal>(FindObjectsOfType<Portal>());
+    }
+
+    public void AddPortal(Portal portal)
+    {
+        portals.Add(portal);
+    }
+
+    public void RemovePortal(Portal portal)
+    {
+        portals.Remove(portal);
     }
 
     public void OnPlayerArriveAtGoal()

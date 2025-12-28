@@ -327,6 +327,9 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
             customGrounded = false;
         }
 
+        PlayerPickup playerPickup = PlayerPickup.instance;
+        playerPickup.TeleportHoldPoint(toPortal, fromPortal);
+
         Physics.SyncTransforms(); // Ensure physics is updated after teleportation
     }
 

@@ -5,7 +5,6 @@ using UnityEngine.Rendering;
 public class MainCamera : Singleton<MainCamera> {
 
     Camera mainCamera;
-    List<Portal> portals;
 
     void Awake()
     {
@@ -14,23 +13,11 @@ public class MainCamera : Singleton<MainCamera> {
         mainCamera.cullingMask = -1;
         mainCamera.cullingMask &= ~(1 << LayerMask.NameToLayer("Player"));
 
-        portals = new List<Portal>(FindObjectsOfType<Portal>());
-
     }
 
     public Camera GetCamera()
     {
         return mainCamera;
-    }
-
-    public void AddPortal(Portal portal)
-    {
-        portals.Add(portal);
-    }
-
-    public void RemovePortal(Portal portal)
-    {
-        portals.Remove(portal);
     }
 
     void OnEnable()
@@ -46,6 +33,7 @@ public class MainCamera : Singleton<MainCamera> {
     void CustomOnBeginCameraRendering(ScriptableRenderContext SRC, Camera camera)
     {
         PlayerController player = PlayerController.instance;
+        List<Portal> portals = LevelManager.instance.portals;
         Transform playerT = player.transform;
         Transform playerEyeT = player.eyeTransform;
         bool cameraTeleported = false;

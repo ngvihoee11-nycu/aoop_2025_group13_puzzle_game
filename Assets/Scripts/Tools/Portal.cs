@@ -164,7 +164,10 @@ public class Portal : MonoBehaviour
     void Start()
     {
         playerCamera = MainCamera.instance.GetCamera();
-        MainCamera.instance.AddPortal(this);
+        if (LevelManager.instance)
+        {
+            LevelManager.instance.AddPortal(this);
+        }
     }
 
     void Update()
@@ -293,6 +296,11 @@ public class Portal : MonoBehaviour
         }
     }
 
+    public bool trackingTraveller(PortalTraveller traveller)
+    {
+        return trackedTravellers.Contains(traveller);
+    }
+
     void Delete()
     {
         if (linkedPortal)
@@ -312,9 +320,9 @@ public class Portal : MonoBehaviour
         {
             viewTexture.Release();
         }
-        if (MainCamera.instance)
+        if (LevelManager.instance)
         {
-            MainCamera.instance.RemovePortal(this);
+            LevelManager.instance.RemovePortal(this);
         }
 
         Destroy(gameObject);
