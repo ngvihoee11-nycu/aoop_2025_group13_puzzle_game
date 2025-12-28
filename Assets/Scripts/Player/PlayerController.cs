@@ -16,6 +16,7 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
     private Vector3 velocity;
     private CharacterController characterController;
     private bool movedAgain;
+    private bool layerMaskSwapped = false;
 
     [Header("Camera")]
     public bool lockCursor;
@@ -38,17 +39,6 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
     private float eyeSmoothRotV;
     private Vector3 modelSmoothRotV;
 
-    [Header("Shooting")]
-    public GameObject portalPrefab;
-    public float maxShootDistance = 100f;
-    private bool isAimingLeft = false;
-    private bool isAimingRight = false;
-
-    private bool layerMaskSwapped = false;
-
-    [Header("Portal instances")]
-    public Portal portal1;
-    public Portal portal2;
 
     void Start()
     {
@@ -200,32 +190,6 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
         eyeRot.y = smoothYaw;
         eyeRot.z = Mathf.SmoothDampAngle(eyeRot.z, 0, ref eyeSmoothRotV, smoothAxisChangeTime);
         eyeTransform.eulerAngles = eyeRot;
-
-        if (lockCursor)
-        {
-            // Input: mouse down enters aiming; mouse up performs Raycast spawn
-            // Start aiming on button down
-            if (Input.GetMouseButtonDown(0))
-            {
-                isAimingLeft = true;
-            }
-            if (Input.GetMouseButtonDown(1))
-            {
-                isAimingRight = true;
-            }
-
-            // On button release, perform Raycast and spawn corresponding prefab
-            if (Input.GetMouseButtonUp(0) && isAimingLeft)
-            {
-                PerformShoot(0);
-                isAimingLeft = false;
-            }
-            if (Input.GetMouseButtonUp(1) && isAimingRight)
-            {
-                PerformShoot(1);
-                isAimingRight = false;
-            }
-        }
     }
 
     void OnControllerColliderHit(ControllerColliderHit hit)
@@ -235,7 +199,7 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
             Portal portal = hit.collider.GetComponentInParent<Portal>();
             if (portal.linkedPortal)
             {
-                portal.OnTravellerEnter(this);
+                portal.OnTravellerEnter(this, true);
                 if(!movedAgain)
                 {
                     movedAgain = true;
@@ -248,29 +212,6 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
         else if (Vector3.Distance(hit.normal, Vector3.up) >= 0.01f && Vector3.Dot(velocity, hit.normal) < 0f)
         {
             velocity -= Vector3.Dot(velocity, hit.normal) * hit.normal;
-        }
-    }
-
-    private void PerformShoot(int button)
-    {
-        Ray ray = new Ray(eyeTransform.position, eyeTransform.forward);
-        int layerMask = ~LayerMask.GetMask("Player", "Portal", "Portal Frame"); // Ignore player and portal collider layer
-        if (Physics.Raycast(ray, out RaycastHit hit, maxShootDistance, layerMask, QueryTriggerInteraction.Ignore))
-        {
-            if (portalPrefab == null)
-            {
-                Debug.LogWarning("No spawn prefab assigned for portals.");
-                return;
-            }
-
-            if (button == 0)
-            {
-                portal1 = Portal.SpawnPortal(portalPrefab, portal2, hit, eyeTransform, false);
-            }
-            else if (button == 1)
-            {
-                portal2 = Portal.SpawnPortal(portalPrefab, portal1, hit, eyeTransform, true);
-            }
         }
     }
 
@@ -382,7 +323,7 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
 
         if (Vector3.Distance(toPortal.forward, Vector3.up) < 0.1f)
         {
-            velocity.y = Mathf.Max(velocity.y, -0.1f * gravity);
+            velocity.y = Mathf.Max(velocity.y, -0.2f * gravity);
             customGrounded = false;
         }
 

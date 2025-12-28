@@ -29,12 +29,12 @@ public class Portal : MonoBehaviour
     RenderTexture viewTexture;
     Camera portalCamera;
     Camera playerCamera;
-    [SerializeField] List<PortalTraveller> trackedTravellers;
+    List<PortalTraveller> trackedTravellers;
     MeshFilter screenMeshFilter;
 
     public static Portal SpawnPortal(GameObject portalPrefab, Portal linkedPortal, RaycastHit hit, Transform eyeT, bool isSecondPortal, bool deleteOldPlayerPortal=true)
     {
-        PlayerController player = PlayerController.instance;
+        PlayerShoot player = PlayerShoot.instance;
 
         Portal oldPortal = deleteOldPlayerPortal ? (isSecondPortal ? player.portal2 : player.portal1) : null;
         Vector3 up = (Mathf.Abs(hit.normal.x) < 0.001f && Mathf.Abs(hit.normal.z) < 0.001f) ? eyeT.up : Vector3.up;
@@ -99,7 +99,7 @@ public class Portal : MonoBehaviour
         Vector3 halfExtents = new Vector3(halfWidth, halfHeight, halfThickness);
         Quaternion orientation = Quaternion.LookRotation(forward, up);
 
-        int layerMask = ~LayerMask.GetMask("Ignore Raycast", "Player", "Portal"); // Ignore player and portal collider layer
+        int layerMask = ~LayerMask.GetMask("Ignore Raycast", "Portal", "Player", "Clone Player", "Portal Traveller", "Clone Traveller");
         QueryTriggerInteraction triggerSetting = QueryTriggerInteraction.Ignore;
 
         Vector3 checkCenter = position + forward * spawnOffset;
@@ -181,13 +181,12 @@ public class Portal : MonoBehaviour
         {
             PortalTraveller traveller = trackedTravellers[i];
             Collider travellerCollider = traveller.GetCollider();
-            if (travellerCollider && Vector3.Dot(transform.forward, traveller.prevOffsetFromPortal) > trigger.transform.localScale.z)
+            if (traveller.hasNotEnterTrigger && travellerCollider && Vector3.Dot(transform.forward, traveller.prevOffsetFromPortal) > trigger.transform.localScale.z)
             {
                 Vector3 checkRange = new Vector3(transform.localScale.x * 0.5f, transform.localScale.y * 0.5f, trigger.transform.localScale.z * forceExitThicknessRatio);
                 List<Collider> colliders = Physics.OverlapBox(transform.position, checkRange, transform.rotation).ToList();
                 if (!colliders.Contains(travellerCollider))
                 {
-                    Debug.Log("Forced exit!");
                     OnTravellerExit(traveller);
                 }
             }
@@ -227,7 +226,7 @@ public class Portal : MonoBehaviour
                 traveller.Teleport(transform, linkedPortal.transform, m.GetPosition(), m.rotation);
                 traveller.AdjustClone(linkedPortal.transform, transform, positionOld, rotOld);
                 OnTravellerExit(traveller, true);
-                linkedPortal.OnTravellerEnter(traveller); // Notify the linked portal of the traveller's entry
+                linkedPortal.OnTravellerEnter(traveller, true); // Notify the linked portal of the traveller's entry
                 linkedPortal.ProtectScreenFromClipping(playerCamera.transform.position);
             }
             else
@@ -239,12 +238,13 @@ public class Portal : MonoBehaviour
         }
     }
 
-    public void OnTravellerEnter(PortalTraveller traveller)
+    public void OnTravellerEnter(PortalTraveller traveller, bool hasNotEnterTrigger=false)
     {
         if (!trackedTravellers.Contains(traveller))
         {
             traveller.EnterPortalTrigger();
             traveller.prevOffsetFromPortal = traveller.transform.position - transform.position;
+            traveller.hasNotEnterTrigger = hasNotEnterTrigger;
             trackedTravellers.Add(traveller);
             traveller.IgnoreCollision(screenCollider, true);
             if (attachedSurface)
@@ -252,9 +252,13 @@ public class Portal : MonoBehaviour
                 traveller.IgnoreCollision(attachedSurface, true);
             }
         }
+        else if (traveller.hasNotEnterTrigger)
+        {
+            traveller.hasNotEnterTrigger = hasNotEnterTrigger;
+        }
     }
 
-    public void OnTravellerExit(PortalTraveller traveller, bool isTeleport = false)
+    public void OnTravellerExit(PortalTraveller traveller, bool isTeleport=false)
     {
         if (trackedTravellers.Contains(traveller))
         {

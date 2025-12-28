@@ -2,7 +2,7 @@ using UnityEngine;
 
 // Attach to the Player GameObject (same object as PlayerController). Provides simple pickup/drop mechanics.
 [RequireComponent(typeof(PlayerController))]
-public class PlayerPickup : MonoBehaviour
+public class PlayerPickup : Singleton<PlayerPickup>
 {
     [SerializeField] float pickupRange = 3f;
     [SerializeField] float throwForce = 6f;
@@ -15,7 +15,7 @@ public class PlayerPickup : MonoBehaviour
 
     void Awake()
     {
-        playerController = GetComponent<PlayerController>();
+        playerController = PlayerController.instance;
         eyeTransform = playerController.eyeTransform;
         if (holdPoint == null)
         {

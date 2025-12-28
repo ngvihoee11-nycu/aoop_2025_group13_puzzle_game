@@ -6,9 +6,11 @@ public class PortalTraveller : MonoBehaviour
     public GameObject graphicsObject;
     public GameObject graphicsClone { get; set; }
     public Vector3 prevOffsetFromPortal { get; set; }
+    public bool hasNotEnterTrigger { get; set; }
 
     public Material[] originalMaterials { get; set; }
     public Material[] cloneMaterials { get; set; }
+
 
     public virtual Collider GetCollider()
     {
