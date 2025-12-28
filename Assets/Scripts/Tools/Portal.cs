@@ -27,7 +27,7 @@ public class Portal : MonoBehaviour
     RenderTexture viewTexture;
     Camera portalCamera;
     Camera playerCamera;
-    List<PortalTraveller> trackedTravellers;
+    [SerializeField] List<PortalTraveller> trackedTravellers;
     MeshFilter screenMeshFilter;
 
     public static Portal SpawnPortal(GameObject portalPrefab, Portal linkedPortal, RaycastHit hit, Transform eyeT, bool isSecondPortal)
@@ -74,12 +74,14 @@ public class Portal : MonoBehaviour
         for (int i = trackedTravellers.Count - 1; i >= 0; i--)
         {
             PortalTraveller traveller = trackedTravellers[i];
-            if (Vector3.Dot(transform.forward, traveller.prevOffsetFromPortal) > trigger.transform.localScale.z)
+            Collider travellerCollider = traveller.GetCollider();
+            if (travellerCollider && Vector3.Dot(transform.forward, traveller.prevOffsetFromPortal) > trigger.transform.localScale.z)
             {
                 Vector3 checkRange = new Vector3(transform.localScale.x * 0.5f, transform.localScale.y * 0.5f, trigger.transform.localScale.z * forceExitThicknessRatio);
                 List<Collider> colliders = Physics.OverlapBox(transform.position, checkRange, transform.rotation).ToList();
-                if (!colliders.Contains(traveller.GetCollider()))
+                if (!colliders.Contains(travellerCollider))
                 {
+                    Debug.Log("Forced exit!");
                     OnTravellerExit(traveller);
                 }
             }

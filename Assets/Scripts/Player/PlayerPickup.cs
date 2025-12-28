@@ -4,36 +4,40 @@ using UnityEngine;
 [RequireComponent(typeof(PlayerController))]
 public class PlayerPickup : MonoBehaviour
 {
-    public float pickupRange = 3f;
-    public float throwForce = 6f;
+    [SerializeField] float pickupRange = 3f;
+    [SerializeField] float throwForce = 6f;
+    [SerializeField] float holdOffset = 2f;
     public Transform holdPoint; // If null, we create a child transform called "HoldPoint"
 
-    private Pickupable heldObject;
-    private PlayerController playerController;
+    Pickupable heldObject;
+    PlayerController playerController;
+    Transform eyeTransform;
 
     void Awake()
     {
         playerController = GetComponent<PlayerController>();
+        eyeTransform = playerController.eyeTransform;
         if (holdPoint == null)
         {
             GameObject hp = new GameObject("HoldPoint");
-            hp.transform.SetParent(transform, false);
+            holdPoint = hp.transform;
             // place hold point a bit in front of the eye
-            if (playerController != null && playerController.eyeTransform != null)
+            if (eyeTransform)
             {
-                hp.transform.position = playerController.eyeTransform.position + playerController.eyeTransform.forward * 1.0f;
-                hp.transform.rotation = playerController.eyeTransform.rotation;
+                holdPoint.SetParent(eyeTransform, false);
             }
             else
             {
-                hp.transform.localPosition = new Vector3(0f, 0f, 1f);
+                holdPoint.SetParent(transform, false);
             }
-            holdPoint = hp.transform;
+            holdPoint.localPosition = new Vector3(0f, 0f, holdOffset);
         }
     }
 
     void Update()
     {
+        //holdPoint.position = eyeTransform.position + eyeTransform.forward * holdOffset;
+
         // Pickup with E, Drop/throw with Q
         if (Input.GetKeyDown(KeyCode.E))
         {
@@ -47,31 +51,30 @@ public class PlayerPickup : MonoBehaviour
         }
     }
 
-    private void TryPickup()
+    public void TryPickup()
     {
-        Transform origin = playerController != null && playerController.eyeTransform != null ? playerController.eyeTransform : transform;
+        Transform origin = playerController != null && eyeTransform != null ? eyeTransform : transform;
         Ray ray = new Ray(origin.position, origin.forward);
-        RaycastHit hit;
         int mask = ~LayerMask.GetMask("Player");
-        if (Physics.Raycast(ray, out hit, pickupRange, mask, QueryTriggerInteraction.Collide))
+        if (Physics.Raycast(ray, out RaycastHit hit, pickupRange, mask, QueryTriggerInteraction.Collide))
         {
             Pickupable p = hit.collider.GetComponentInParent<Pickupable>();
             if (p != null)
             {
                 heldObject = p;
-                heldObject.OnPickup(holdPoint);
+                heldObject.OnPickup(this);
             }
         }
     }
 
-    private void Drop(bool throwObject)
+    public void Drop(bool throwObject)
     {
         if (heldObject == null) return;
 
         Vector3 throwVel = Vector3.zero;
         if (throwObject)
         {
-            Transform origin = playerController != null && playerController.eyeTransform != null ? playerController.eyeTransform : transform;
+            Transform origin = playerController != null && eyeTransform != null ? eyeTransform : transform;
             throwVel = origin.forward * throwForce + (playerController != null ? playerController.transform.GetComponent<CharacterController>()?.velocity ?? Vector3.zero : Vector3.zero);
         }
 
