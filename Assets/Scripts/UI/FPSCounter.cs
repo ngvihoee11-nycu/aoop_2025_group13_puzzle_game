@@ -1,22 +1,44 @@
-using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using TMPro;
 
-public class Fps : MonoBehaviour
+public class FrameRate : MonoBehaviour
 {
-    private float count;
+    private TextMeshProUGUI TextMeshPro;
     
-    private IEnumerator Start()
+    // Variables to track timing and frames
+    private float timer;
+    private int frameCount;
+
+    // Configuration for how often to update (0.5 seconds)
+    private float pollingTime = 0.5f;
+
+    private void Awake()
     {
-        GUI.depth = 2;
-        while (true)
-        {
-            count = 1f / Time.unscaledDeltaTime;
-            yield return new WaitForSeconds(0.1f);
-        }
+        TextMeshPro = GetComponent<TextMeshProUGUI>();
     }
-    
-    private void OnGUI()
+
+    private void Update()
     {
-        GUI.Label(new Rect(5, 40, 100, 25), "FPS: " + Mathf.Round(count));
+        // Add the time passed since last frame to the timer
+        timer += Time.deltaTime;
+        
+        // Increment the frame count
+        frameCount++;
+
+        // If the timer exceeds our polling time (0.5s)
+        if (timer >= pollingTime)
+        {
+            // Calculate Average FPS: Frames / Time
+            int fps = Mathf.RoundToInt(frameCount / timer);
+
+            // Update Text
+            TextMeshPro.text = fps + " FPS";
+
+            // Reset timer and frame count
+            timer -= pollingTime;
+            frameCount = 0;
+        }
     }
 }
