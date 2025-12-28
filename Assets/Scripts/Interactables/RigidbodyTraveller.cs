@@ -4,6 +4,13 @@ using UnityEngine;
 public class RigidbodyTraveller : PortalTraveller
 {
     public Rigidbody rigid;
+    public Collider rigidCollider;
+    public Collider kinematicCollider;
+
+    void Awake()
+    {
+        Physics.IgnoreCollision(rigidCollider, kinematicCollider, true);
+    } 
 
     public override void Teleport(Transform fromPortal, Transform toPortal, Vector3 pos, Quaternion rot)
     {
