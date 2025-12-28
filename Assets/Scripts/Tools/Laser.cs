@@ -9,6 +9,7 @@ public class Laser : MonoBehaviour
 
     void OnTriggerEnter(Collider other)
     {
+        Debug.Log("Laser hit: " + other.name);
         GetComponentInParent<LaserEmitter>().EmitLaser();
     }
 
