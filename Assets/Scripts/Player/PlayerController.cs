@@ -22,6 +22,7 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
     public bool lockCursor;
     public Transform eyeTransform;
     public Vector3 eyeOffset = new Vector3(0f, 0.375f, 0f);
+    public Vector3 modelOffset = Vector3.zero;
     public float mouseSensitivity = 100f;
     public float minPitch = -90f;
     public float maxPitch = 90f;
@@ -37,9 +38,11 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
     private float yawSmoothV;
     private Vector3 eyeSmoothPosV;
     private float eyeSmoothRotV;
+    private Vector3 modelSmoothPosV;
     private Vector3 modelSmoothRotV;
 
     private Animator animator;
+    private Animator cloneAnimator;
 
 
     void Start()
@@ -106,6 +109,7 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
             }
         }
 
+        int movementState = 0; // Animation Idle
         bool grounded = characterController.isGrounded;
 
         Vector2 input = new Vector2(0f, 0f);
@@ -119,10 +123,17 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
         Vector3 inputDir = new Vector3(input.x, 0, input.y).normalized;
         Vector3 worldInputDir = transform.TransformDirection(inputDir);
 
-        float movingSpeed = Input.GetKey(KeyCode.LeftShift) ? runSpeed : walkSpeed;
+
+        bool isRunning = Input.GetKey(KeyCode.LeftShift);
+        float movingSpeed = isRunning ? runSpeed : walkSpeed;
 
         if (grounded && customGrounded)
         {
+            if (input != Vector2.zero)
+            {
+                movementState = isRunning ? 2 : 1; // run or walk animation
+            }
+
             Vector3 inputVelocity = worldInputDir * movingSpeed;
             float verticalVelocity = velocity.y;
             // Small negative value to keep the controller grounded
@@ -133,6 +144,7 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
             // v = sqrt(2 * g * h) but gravity is negative so use -2 * gravity
             if (lockCursor && Input.GetButtonDown("Jump"))
             {
+                movementState = 3; // Jump Animation
                 verticalVelocity = Mathf.Sqrt(jumpHeight * -2f * gravity);
             }
             velocity = Vector3.SmoothDamp(velocity, inputVelocity, ref smoothV, smoothMoveTime);
@@ -188,6 +200,8 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
 
         if (graphicsObject)
         {
+            graphicsObject.transform.localPosition = Vector3.SmoothDamp(graphicsObject.transform.localPosition, modelOffset, ref modelSmoothPosV, smoothModelRotationTime);
+
             Vector3 modelRot = graphicsObject.transform.localEulerAngles;
             modelRot.x = Mathf.SmoothDampAngle(modelRot.x, 0, ref modelSmoothRotV.x, smoothModelRotationTime);
             modelRot.y = Mathf.SmoothDampAngle(modelRot.y, 0, ref modelSmoothRotV.y, smoothModelRotationTime);
@@ -205,25 +219,12 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
 
         if (animator != null)
         {
-            int movementState = 0; // Idle
-
-            if (!customGrounded)
-            {
-                movementState = 3; // Jump
-            }
-            else if (input.sqrMagnitude > 0.01f)
-            {
-                if (Input.GetKey(KeyCode.LeftShift))
-                {
-                    movementState = 2; // Run
-                }
-                else
-                {
-                    movementState = 1; // Walk
-                }
-            }
-
             animator.SetInteger("Movement", movementState);
+
+            if (cloneAnimator)
+            {
+                cloneAnimator.SetInteger("Movement", movementState);
+            }
         }
     }
 
@@ -298,7 +299,9 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
             graphicsClone = Instantiate(graphicsObject);
             graphicsClone.transform.parent = graphicsObject.transform.parent;
             graphicsClone.transform.localScale = graphicsObject.transform.localScale;
-            
+
+            cloneAnimator = graphicsClone.GetComponentInChildren<Animator>();
+
             layerMaskSwapped = false;
             graphicsClone.layer = LayerMask.NameToLayer("Clone Player");
             foreach (Transform child in graphicsClone.GetComponentsInChildren<Transform>())
