@@ -39,9 +39,13 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
     private float eyeSmoothRotV;
     private Vector3 modelSmoothRotV;
 
+    private Animator animator;
+
 
     void Start()
     {
+        animator = GetComponentInChildren<Animator>();
+
         if (lockCursor)
         {
             Cursor.lockState = CursorLockMode.Locked;
@@ -198,6 +202,29 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
         eyeRot.y = smoothYaw;
         eyeRot.z = Mathf.SmoothDampAngle(eyeRot.z, 0, ref eyeSmoothRotV, smoothAxisChangeTime);
         eyeTransform.eulerAngles = eyeRot;
+
+        if (animator != null)
+        {
+            int movementState = 0; // Idle
+
+            if (!customGrounded)
+            {
+                movementState = 3; // Jump
+            }
+            else if (input.sqrMagnitude > 0.01f)
+            {
+                if (Input.GetKey(KeyCode.LeftShift))
+                {
+                    movementState = 2; // Run
+                }
+                else
+                {
+                    movementState = 1; // Walk
+                }
+            }
+
+            animator.SetInteger("Movement", movementState);
+        }
     }
 
     void OnControllerColliderHit(ControllerColliderHit hit)
