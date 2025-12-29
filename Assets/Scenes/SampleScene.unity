@@ -1393,31 +1393,6 @@ PrefabInstance:
       propertyPath: m_Name
       value: Box
       objectReference: {fileID: 0}
-    - target: {fileID: 6706252412883092927, guid: a914386ad966ed072a8d6afc4bac8f9d,
-        type: 3}
-      propertyPath: pickupTorque
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 6706252412883092927, guid: a914386ad966ed072a8d6afc4bac8f9d,
-        type: 3}
-      propertyPath: pickedAngularDrag
-      value: 10
-      objectReference: {fileID: 0}
-    - target: {fileID: 8749753163578482957, guid: a914386ad966ed072a8d6afc4bac8f9d,
-        type: 3}
-      propertyPath: m_LocalScale.x
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 8749753163578482957, guid: a914386ad966ed072a8d6afc4bac8f9d,
-        type: 3}
-      propertyPath: m_LocalScale.y
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 8749753163578482957, guid: a914386ad966ed072a8d6afc4bac8f9d,
-        type: 3}
-      propertyPath: m_LocalScale.z
-      value: 1
-      objectReference: {fileID: 0}
     - target: {fileID: 8749753163578482957, guid: a914386ad966ed072a8d6afc4bac8f9d,
         type: 3}
       propertyPath: m_LocalPosition.x
@@ -1436,7 +1411,7 @@ PrefabInstance:
     - target: {fileID: 8749753163578482957, guid: a914386ad966ed072a8d6afc4bac8f9d,
         type: 3}
       propertyPath: m_LocalRotation.w
-      value: 1
+      value: 0.9455186
       objectReference: {fileID: 0}
     - target: {fileID: 8749753163578482957, guid: a914386ad966ed072a8d6afc4bac8f9d,
         type: 3}
@@ -1446,7 +1421,7 @@ PrefabInstance:
     - target: {fileID: 8749753163578482957, guid: a914386ad966ed072a8d6afc4bac8f9d,
         type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0
+      value: 0.32556805
       objectReference: {fileID: 0}
     - target: {fileID: 8749753163578482957, guid: a914386ad966ed072a8d6afc4bac8f9d,
         type: 3}
@@ -1461,16 +1436,11 @@ PrefabInstance:
     - target: {fileID: 8749753163578482957, guid: a914386ad966ed072a8d6afc4bac8f9d,
         type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
+      value: 38
       objectReference: {fileID: 0}
     - target: {fileID: 8749753163578482957, guid: a914386ad966ed072a8d6afc4bac8f9d,
         type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 8749753163578482957, guid: a914386ad966ed072a8d6afc4bac8f9d,
-        type: 3}
-      propertyPath: m_ConstrainProportionsScale
       value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
