@@ -1703,10 +1703,10 @@ MonoBehaviour:
   lockCursor: 0
   eyeTransform: {fileID: 1744831609}
   eyeOffset: {x: 0, y: 0.375, z: 0}
-  mouseSensitivity: 1000
+  mouseSensitivity: 300
   minPitch: -90
   maxPitch: 90
-  smoothRotationTime: 0.1
+  smoothRotationTime: 0.05
   pitch: 0
   yaw: 0
   smoothAxisChangeTime: 0.2
@@ -1831,7 +1831,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -326, y: 306}
+  m_AnchoredPosition: {x: -784, y: 452}
   m_SizeDelta: {x: 200, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1036073661
