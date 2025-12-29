@@ -9,6 +9,11 @@ public class Laser : MonoBehaviour
 
     void OnTriggerEnter(Collider other)
     {
+        Debug.Log("Laser hit: " + other.name);
+        if (other.CompareTag("Player"))
+        {
+            LevelManager.instance.ResetPlayerPosition(other.transform);
+        }
         GetComponentInParent<LaserEmitter>().EmitLaser();
     }
 

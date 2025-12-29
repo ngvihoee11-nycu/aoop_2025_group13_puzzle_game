@@ -48,11 +48,10 @@ class LevelManager : Singleton<LevelManager>
         Debug.Log("Loading Level: " + level);
     }
 
-    public void ResetPlayerPosition()
+    public void ResetPlayerPosition(Transform player)
     {
-        PlayerController.instance.transform.position = Vector3.zero;
-        PlayerController.instance.transform.rotation = Quaternion.identity;
-        Physics.SyncTransforms();
+        player.position = Vector3.zero;
+        player.rotation = Quaternion.identity;
         Debug.Log("Player position has been reset.");
     }
 }
