@@ -47,4 +47,11 @@ class LevelManager : Singleton<LevelManager>
         // Add your level loading logic here
         Debug.Log("Loading Level: " + level);
     }
+
+    public void ResetPlayerPosition(Transform player)
+    {
+        player.position = Vector3.zero;
+        player.rotation = Quaternion.identity;
+        Debug.Log("Player position has been reset.");
+    }
 }

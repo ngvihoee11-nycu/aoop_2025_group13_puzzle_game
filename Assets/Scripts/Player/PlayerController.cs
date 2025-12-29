@@ -79,6 +79,14 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
 
     void Update()
     {
+        // Reset Player Position if Player falls below certain Y level
+        if (transform.position.y < -20f)
+        {
+            LevelManager.instance.ResetPlayerPosition(transform);
+            velocity = Vector3.zero;
+            return;
+        }
+
         if ((lockCursor && Input.GetKeyDown(KeyCode.Tab)) || (!lockCursor && Input.GetMouseButtonUp(0)))
         {
             lockCursor = !lockCursor;
