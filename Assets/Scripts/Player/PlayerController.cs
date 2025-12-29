@@ -82,7 +82,7 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
         // Reset Player Position if Player falls below certain Y level
         if (transform.position.y < -20f)
         {
-            LevelManager.instance.ResetPlayerPosition(transform);
+            LevelManager.instance.ResetPlayerPosition();
             velocity = Vector3.zero;
             return;
         }

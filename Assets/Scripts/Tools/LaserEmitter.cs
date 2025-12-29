@@ -39,6 +39,15 @@ public class LaserEmitter : MonoBehaviour
         EmitLaser();
     }
 
+    public void OnLaserHit(Collider other)
+    {
+        Debug.Log("Laser hit: " + other.name);
+        if (other.CompareTag("Player"))
+        {
+            LevelManager.instance.ResetPlayerPosition();
+        }
+    }
+
     public void EmitLaser()
     {
         float remainLength = maxLength;
@@ -145,6 +154,10 @@ public class LaserEmitter : MonoBehaviour
                     SetupNextLaser(index + 1, hit.point, Quaternion.LookRotation(reflectedDir), hit.collider);
                 }
             }
+            else
+            {
+                OnLaserHit(hit.collider);
+            }
         }
 
         // --- Restore Exiting Collider Layer ---
@@ -192,21 +205,5 @@ public class LaserEmitter : MonoBehaviour
         {
             SetLayerRecursively(child.gameObject, layer);
         }
-    }
-
-    public void InitializeLaser()
-    {
-        if (laserPrefab == null) return;
-
-        ignoreLayer = LayerMask.NameToLayer("Ignore Raycast");
-        
-        if (lasers == null) lasers = new List<Laser>();
-        
-        if (lasers.Count == 0 || lasers[0] == null)
-        {
-            LaserInit(0, transform.position, transform.rotation);
-        }
-        
-        EmitLaser();
     }
 }
