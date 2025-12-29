@@ -86,6 +86,8 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
 
     void Update()
     {
+        if (Time.timeScale == 0f) return;
+
         // Reset Player Position if Player falls below certain Y level
         if (transform.position.y < -20f)
         {
