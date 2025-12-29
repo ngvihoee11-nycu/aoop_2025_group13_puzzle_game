@@ -44,7 +44,7 @@ public class PlayerController : PortalTravellerSingleton<PlayerController>
 
     void Start()
     {
-        animator = GetComponent<Animator>();
+        animator = GetComponentInChildren<Animator>();
 
         if (lockCursor)
         {
