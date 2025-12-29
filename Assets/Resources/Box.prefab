@@ -16,7 +16,7 @@ GameObject:
   - component: {fileID: 6842143467803975040}
   m_Layer: 9
   m_Name: Box
-  m_TagString: Untagged
+  m_TagString: Mirror
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
