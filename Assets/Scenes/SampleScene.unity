@@ -1676,6 +1676,7 @@ MonoBehaviour:
   lockCursor: 0
   eyeTransform: {fileID: 1744831609}
   eyeOffset: {x: 0, y: 0.65, z: 0}
+  modelOffset: {x: 0, y: -1.1, z: 0}
   mouseSensitivity: 300
   minPitch: -90
   maxPitch: 90
@@ -2502,6 +2503,11 @@ PrefabInstance:
         type: 3}
       propertyPath: m_Layer
       value: 7
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: db60a912545647e4ea41eb9ed94af033,
+        type: 3}
+      propertyPath: m_TagString
+      value: Player
       objectReference: {fileID: 0}
     - target: {fileID: 1752310950642210314, guid: db60a912545647e4ea41eb9ed94af033,
         type: 3}
